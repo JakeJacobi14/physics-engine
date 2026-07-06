@@ -7,6 +7,29 @@
 </head>
 <body>
   <canvas id="canvas"></canvas>
+  <div id="controls">
+    <div class="control-group">
+        <label for="radiusSlider">Radius: <span id="radiusValue">25</span></label>
+        <input type="range" id="radiusSlider" min = "8" max = "60" value="25">
+    </div>
+    <div class="control-group">
+        <label for="bouncinessSlider">Bounciness: <span id="bouncinessValue">0.65</span></label>
+        <input type="range" id="bouncinessSlider" min = "0" max = "0.99" step = "0.01" value="0.65">
+    </div>
+    <div class="control-group">
+        <label for="airResistanceSlider">Air Resistance: <span id="airResistanceValue">0.1</span></label>
+        <input type="range" id="airResistanceSlider" min = "0" max = "2" step="0.05" value="0.1">
+    </div>
+    <div class="control-group">
+        <label for="massSlider">Mass: <span id="massValue">25</span></label>
+        <input type="range" id="massSlider" min = "1" max = "100" value="25">
+    </div>
+    <div class="control-group">
+        <label for="timeScaleSlider">Time Scale: <span id="timeScaleValue">1</span></label>
+        <input type="range" id="timeScaleSlider" min = "0" max = "2" step="0.25" value="1">
+        <button id="resetTimeScale">Reset</button>
+    </div>
+  </div>
   <script type="module" src="main.js"></script>
 </body>
 </html>

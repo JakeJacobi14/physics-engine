@@ -1,11 +1,12 @@
 import { Ball } from "./ball.js";
 import { colors } from "./globals.js";
+import { radiusSlider, radiusValueDisplay, bouncinessValueDisplay, bouncinessSlider, airResistanceSlider, airResistanceValueDisplay, massSlider, massValueDisplay, timeScaleSlider, timeScaleDisplay, resetTimeScaleButton } from "./ui.js";
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+canvas.width = canvas.clientWidth;
+canvas.height = canvas.clientHeight;
 
 let lastTime = performance.now();
 
@@ -13,7 +14,7 @@ let balls = [];
 
 function update(dt) {
     for (const ball of balls) {
-        ball.update(dt, canvas);
+        ball.update(dt, canvas, parseFloat(airResistanceSlider.value));
 
         // check for collisions
         for (const otherBall of balls) {
@@ -57,8 +58,10 @@ function draw() {
 }
 
 function loop() {
+    // find deltaTime
     let currentTime = performance.now();
-    const dt = (currentTime - lastTime) / 1000;
+    const actualDt = (currentTime - lastTime) / 1000;
+    const dt = actualDt * parseFloat(timeScaleSlider.value);
     lastTime = currentTime;
     update(dt);
     draw();
@@ -78,8 +81,14 @@ function drawCircle(x, y, radius, startAngle, endAngle, color, toFill) {
     }
 }
 
+// Helper function to get a random number in a range
 function randomRange(min, max) {
     return Math.random() * (max - min) + min;
+}
+
+function resizeCanvas() {
+    canvas.width = canvas.clientWidth;
+    canvas.height = canvas.clientHeight;
 }
 
 canvas.addEventListener("click", (event) => {
@@ -88,10 +97,46 @@ canvas.addEventListener("click", (event) => {
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
 
-    balls.push(new Ball(x, y, randomRange(15, 40), colors[Math.floor(randomRange(0, colors.length))], 5));
+    // x, y, radius, color, mass, bounciness, air resistance
+    balls.push(new Ball(x, y, parseFloat(radiusSlider.value), colors[Math.floor(randomRange(0, colors.length))], parseFloat(massSlider.value), parseFloat(bouncinessSlider.value), parseFloat(airResistanceSlider.value)));
     
 });
 
+// update radius value in the slider
+radiusSlider.addEventListener("input", () => {
+    radiusValueDisplay.textContent = radiusSlider.value;
+});
+// update bounciness value in the slider
+bouncinessSlider.addEventListener("input", () => {
+    bouncinessValueDisplay.textContent = bouncinessSlider.value;
+});
+// update air resistance value in the slider
+airResistanceSlider.addEventListener("input", () => {
+    airResistanceValueDisplay.textContent = airResistanceSlider.value;
+});
+// update mass value in the slider
+massSlider.addEventListener("input", () => {
+    massValueDisplay.textContent = massSlider.value;
+});
+// update time scale value in the slider
+timeScaleSlider.addEventListener("input", () => {
+    timeScaleDisplay.textContent = timeScaleSlider.value;
+});
+// listener for the time scale reset button
+resetTimeScaleButton.addEventListener("click", () => {
+    timeScaleSlider.value = 1;
+    timeScaleDisplay.textContent = "1";
+    
+});
+
+// listener to resize canvas
+window.addEventListener("resize", resizeCanvas)
 
 
+resizeCanvas();
 loop();
+
+
+// TODO:
+
+// add friction, fix air resistence, make mass work with colissions, fix tabbing out bug, 

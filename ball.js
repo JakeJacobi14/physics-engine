@@ -1,40 +1,44 @@
 import { gravity } from "./globals.js";
 
 export class Ball {
+
     xVelocity = 0;
     yVelocity = 0;
     xForce = 0;
     yForce = 0;
-    bounciness = 0.65;
-    constructor(x, y, radius, color, mass) {
+
+
+    constructor(x, y, radius, color, mass, bounciness) {
         this.x = x;
         this.y = y;
         this.radius = radius;
         this.color = color;
         this.mass = mass
+        this.bounciness = bounciness;
     }
 
     draw(ctx) {
+
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
         ctx.fill();
-        
-
+    
     }
 
-    update(dt, canvas) {
+    update(dt, canvas, drag) {
         // reset the forces to 0
         this.xForce = 0;
         this.yForce = 0;
 
-        // gravity force
-        this.yForce -= gravity * this.mass;
+        // gravity force F=ma but we divide out mass when turning a = F/m so we can just not add it at all
+        this.yForce -= gravity;
         
         // air resistence
         let speed = Math.sqrt((this.xVelocity ** 2) + (this.yVelocity ** 2));
         if (speed > 0) {
-            let dragStrength = 0.02; 
+            // larger objects experience more drag, and heavier ones experience less
+            let dragStrength = drag * this.radius * 0.2 * (1 / this.mass);
 
             this.xForce += this.xVelocity * dragStrength;
             this.yForce += this.yVelocity * dragStrength;
@@ -89,6 +93,7 @@ export class Ball {
         // compute the dot product of the x and y vectors
         const vDotN = this.xVelocity * nx + this.yVelocity * ny;
 
+        // apply velocity change
         this.xVelocity -= (1 + this.bounciness) * vDotN * nx;
         this.yVelocity -= (1 + this.bounciness) * vDotN * ny;
 
