@@ -1,7 +1,7 @@
 import { Ball } from "./ball.js";
 import { colors } from "./globals.js";
 import { Vector2 } from "./vector2.js";
-import { radiusSlider, radiusValueDisplay, bouncinessValueDisplay, bouncinessSlider, airResistanceSlider, airResistanceValueDisplay, massSlider, massValueDisplay, timeScaleSlider, timeScaleDisplay, resetTimeScaleButton } from "./ui.js";
+import { radiusSlider, radiusValueDisplay, bouncinessValueDisplay, bouncinessSlider, airResistanceSlider, airResistanceValueDisplay, massSlider, massValueDisplay, timeScaleSlider, timeScaleDisplay, resetTimeScaleButton, fpsDisplay, resetButton } from "./ui.js";
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -12,6 +12,8 @@ canvas.height = canvas.clientHeight;
 let lastTime = performance.now();
 
 let balls = [];
+
+let fpsTimer = 0;
 
 function update(dt) {
     for (const ball of balls) {
@@ -39,6 +41,14 @@ function loop() {
         actualDt = 0.016;
     }
     const dt = actualDt * parseFloat(timeScaleSlider.value);
+
+    // update the fps display every quarter second
+    if (fpsTimer >= 0.25) {
+        fpsDisplay.textContent = Math.round(1 / dt);
+        fpsTimer = 0;
+    }
+    fpsTimer += actualDt;
+
     lastTime = currentTime;
 
     update(dt);
@@ -107,6 +117,25 @@ function randomRange(min, max) {
     return Math.random() * (max - min) + min;
 }
 
+// Helper function to reset the scene
+function resetScene() {
+    balls = [];
+    radiusSlider.value = 25;
+    radiusValueDisplay.textContent = radiusSlider.value;
+
+    bouncinessSlider.value = 0.65;
+    bouncinessValueDisplay.textContent = bouncinessSlider.value;
+
+    airResistanceSlider.value = 1.225;
+    airResistanceValueDisplay.textContent = airResistanceSlider.value;
+
+    massSlider.value = 25;
+    massValueDisplay.textContent = massSlider.value;
+
+    timeScaleSlider.value = 1;
+    timeScaleDisplay.textContent = timeScaleSlider.value;
+}
+
 // Resizes the canvas when the window size is changed
 function resizeCanvas() {
     canvas.width = canvas.clientWidth;
@@ -134,25 +163,33 @@ canvas.addEventListener("click", (event) => {
 
 });
 
-// summon 10 balls
-canvas.addEventListener("", (event) => {
-    const rect = canvas.getBoundingClientRect();
-    for (let i = 0; i < 10; i++) {
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-        const nudge = randomRange(0.01, 0.02);
-        const posVector = new Vector2(x + nudge, y + nudge);
-
-        const radius = parseFloat(radiusSlider.value);
-        const color = colors[Math.floor(randomRange(0, colors.length))]
-        const mass = parseFloat(massSlider.value);
-        const bounciness = parseFloat(bouncinessSlider.value);
-        // position vector, radius, color, mass, bounciness
-        const ball = new Ball(posVector, radius, color, mass, bounciness);
-        balls.push(ball);
+// R to reset canvas
+document.addEventListener("keydown", (event) => {
+    if (event.key === "r") {
+        resetScene();
     }
+    // debug to spawn 20 balls
+    if (event.key === "t") {
+        const x = canvas.width / 2;
+        const y = canvas.height / 2;
+        for (let i = 0; i < 200; i++) {
+            // small nudge so clicking twice in the same spot won't stack balls
+            const nudge = randomRange(0.01, 0.02);
+            const posVector = new Vector2(x + nudge, y + nudge);
 
+            const radius = parseFloat(radiusSlider.value);
+            const color = colors[Math.floor(randomRange(0, colors.length))]
+            const mass = parseFloat(massSlider.value);
+            const bounciness = parseFloat(bouncinessSlider.value);
+
+            // position vector, radius, color, mass, bounciness
+            const ball = new Ball(posVector, radius, color, mass, bounciness);
+            balls.push(ball);
+        }
+       
+    }
 });
+
 
 // update radius value in the slider
 radiusSlider.addEventListener("input", () => {
@@ -181,6 +218,10 @@ resetTimeScaleButton.addEventListener("click", () => {
     
 });
 
+resetButton.addEventListener("click", () => {
+  resetScene();
+});
+
 // listener to resize canvas
 window.addEventListener("resize", resizeCanvas)
 
@@ -190,6 +231,5 @@ loop();
 
 
 /* TODO:
- add friction
- 
+ add friction, decoration, sound effects, reenforce no clipping (ground and other balls)
  */

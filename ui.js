@@ -13,3 +13,7 @@ export const massValueDisplay = document.getElementById("massValue");
 export const timeScaleSlider = document.getElementById("timeScaleSlider");
 export const timeScaleDisplay = document.getElementById("timeScaleValue");
 export const resetTimeScaleButton = document.getElementById("resetTimeScale");
+
+export const fpsDisplay = document.getElementById("fpsValue");
+
+export const resetButton = document.getElementById("resetButton");
