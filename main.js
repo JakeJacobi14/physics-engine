@@ -1,5 +1,6 @@
 import { Ball } from "./ball.js";
 import { colors } from "./globals.js";
+import { Vector2 } from "./vector2.js";
 import { radiusSlider, radiusValueDisplay, bouncinessValueDisplay, bouncinessSlider, airResistanceSlider, airResistanceValueDisplay, massSlider, massValueDisplay, timeScaleSlider, timeScaleDisplay, resetTimeScaleButton } from "./ui.js";
 
 const canvas = document.getElementById("canvas");
@@ -15,36 +16,8 @@ let balls = [];
 function update(dt) {
     for (const ball of balls) {
         ball.update(dt, canvas, parseFloat(airResistanceSlider.value));
-
-        // check for collisions
-        for (const otherBall of balls) {
-            // don't bounce with yourself
-            if (otherBall === ball) {
-                continue;
-            }
-            // check if they touch
-            let xDist = ball.x - otherBall.x;
-            let yDist = ball.y - otherBall.y;
-            let dist = Math.sqrt((xDist ** 2) + (yDist ** 2));
-            if (dist <= ball.radius + otherBall.radius) {
-                let overlap = (ball.radius + otherBall.radius) - dist;
-                // they overlap, push them apart before applying bounce
-                if (overlap > 0) {
-                    let magX = xDist / dist;
-                    let magY = yDist / dist;
-
-                    ball.x += magX * overlap * 0.5;
-                    ball.y += magY * overlap * 0.5;
-
-                    otherBall.x -= magX * overlap * 0.5;
-                    otherBall.y -= magY * overlap * 0.5;
-                }
-                
-                ball.bounce(xDist, yDist);
-            }
-
-        }
     }
+    
     draw();
 }
 
@@ -60,24 +33,72 @@ function draw() {
 function loop() {
     // find deltaTime
     let currentTime = performance.now();
-    const actualDt = (currentTime - lastTime) / 1000;
+    let actualDt = (currentTime - lastTime) / 1000;
+    // if the program freezes or is tabbed out, don't create a massive deltaTime
+    if (actualDt > 0.1) {
+        actualDt = 0.016;
+    }
     const dt = actualDt * parseFloat(timeScaleSlider.value);
     lastTime = currentTime;
+
     update(dt);
+
+    resolveCollisons(dt);
+
     draw();
+    
     requestAnimationFrame(loop);
 }
 
-// Helper function to draw a circle
-function drawCircle(x, y, radius, startAngle, endAngle, color, toFill) {
-    ctx.beginPath();
-    ctx.arc(x, y, radius, startAngle, endAngle);
-    if (toFill) {
-        ctx.fillStyle = color;
-        ctx.fill();
-    } else {
-        ctx.strokeStyle = color;
-        ctx.stroke();
+// impulses for collisions
+function resolveCollisons(dt) {
+    for (let i = 0; i < balls.length; i++) {
+        for (let j = i + 1; j < balls.length; j++) {
+            let b1 = balls[i];
+            let b2 = balls[j];
+            
+            // check if they touch
+            let dir = b1.position.clone().sub(b2.position);
+            const dist = dir.magnitude();
+            // detect collision
+            if (dist <= b1.radius + b2.radius) {
+                const overlap = (b1.radius + b2.radius) - dist;
+                // they overlap, push them apart before applying bounce
+                dir.normalize();
+                if (overlap > 0) {
+                    // dir.normalize();
+
+                    // each moves half distance, they go opposite directions
+                    b1.position.x += dir.x * overlap * 0.5;
+                    b1.position.y += dir.y * overlap * 0.5;
+
+                    b2.position.x -= dir.x * overlap * 0.5;
+                    b2.position.y -= dir.y * overlap * 0.5;
+                }
+                
+                // b1.bounce(dir);
+                // b2.bounce(dir);
+
+                // find the velocity along the collision axis by dotting it with the direction vector
+                const v1 = b1.velocity.clone().dotProduct(dir);
+                const v2 = b2.velocity.clone().dotProduct(dir);
+                // masses
+                const m1 = b1.mass;
+                const m2 = b2.mass;
+
+                // compute the new velocities
+                const v1n = (((m1 - m2) * v1) + (2 * m2 * v2)) / (m1 + m2);
+                const v2n = (((m2 - m1) * v2) + (2 * m1 * v1)) / (m1 + m2);
+
+                // calculate the new velocity
+                const dv1 = dir.clone().mult(v1n - v1);
+                b1.velocity.add(dv1);
+
+                const dv2 = dir.clone().mult(v2n - v2);
+                b2.velocity.add(dv2);
+            
+            }
+        }
     }
 }
 
@@ -86,20 +107,51 @@ function randomRange(min, max) {
     return Math.random() * (max - min) + min;
 }
 
+// Resizes the canvas when the window size is changed
 function resizeCanvas() {
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
 }
 
+// summon one ball
 canvas.addEventListener("click", (event) => {
     const rect = canvas.getBoundingClientRect();
 
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
+    // small nudge so clicking twice in the same spot won't stack balls
+    const nudge = randomRange(0.01, 0.02);
+    const posVector = new Vector2(x + nudge, y + nudge);
 
-    // x, y, radius, color, mass, bounciness, air resistance
-    balls.push(new Ball(x, y, parseFloat(radiusSlider.value), colors[Math.floor(randomRange(0, colors.length))], parseFloat(massSlider.value), parseFloat(bouncinessSlider.value), parseFloat(airResistanceSlider.value)));
-    
+    const radius = parseFloat(radiusSlider.value);
+    const color = colors[Math.floor(randomRange(0, colors.length))]
+    const mass = parseFloat(massSlider.value);
+    const bounciness = parseFloat(bouncinessSlider.value);
+
+    // position vector, radius, color, mass, bounciness
+    const ball = new Ball(posVector, radius, color, mass, bounciness);
+    balls.push(ball);
+
+});
+
+// summon 10 balls
+canvas.addEventListener("", (event) => {
+    const rect = canvas.getBoundingClientRect();
+    for (let i = 0; i < 10; i++) {
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        const nudge = randomRange(0.01, 0.02);
+        const posVector = new Vector2(x + nudge, y + nudge);
+
+        const radius = parseFloat(radiusSlider.value);
+        const color = colors[Math.floor(randomRange(0, colors.length))]
+        const mass = parseFloat(massSlider.value);
+        const bounciness = parseFloat(bouncinessSlider.value);
+        // position vector, radius, color, mass, bounciness
+        const ball = new Ball(posVector, radius, color, mass, bounciness);
+        balls.push(ball);
+    }
+
 });
 
 // update radius value in the slider
@@ -137,6 +189,7 @@ resizeCanvas();
 loop();
 
 
-// TODO:
-
-// add friction, fix air resistence, make mass work with colissions, fix tabbing out bug, 
+/* TODO:
+ add friction
+ 
+ */
