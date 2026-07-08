@@ -1,7 +1,13 @@
 import { gravity, circleDragCoefficient, dragK, gK } from "./globals.js";
 import { Vector2 } from "./vector2.js";
 
+const SLEEP_VELOCITY_THRESHOLD = 5; // sleep speed threshold
+const SLEEP_TIME_REQUIRED = 0.5;    // time sleep threshold
+
 export class Ball {
+    isAsleep = false;
+    sleepTimer = 0;
+
     constructor(position, radius, color, mass, bounciness) {
         this.force = new Vector2(0, 0);
         this.velocity = new Vector2(0, 0);
@@ -20,13 +26,15 @@ export class Ball {
 
         ctx.beginPath();
         ctx.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
+        ctx.fillStyle = this.isAsleep ? "black" : this.color;
         ctx.fill();
     
     }
 
     update(dt, canvas, airDensity) {
-        // console.log("{" + this.force.x + ", " + this.force.y + "}");
+        if (this.isAsleep) {
+            return;
+        }
 
         // reset the forces to 0
         this.force.mult(0);
@@ -34,6 +42,7 @@ export class Ball {
         // apply gravity force F=ma
         this.force.sub(gravity.clone().mult(this.mass * gK));
         
+
         // apply air resistence REWORK LATER
         let speed = this.velocity.magnitude();
         if (speed > 0) {
@@ -48,7 +57,7 @@ export class Ball {
         }
         
         // bounding area of screen
-        this.checkBounds(canvas);
+        // this.checkBounds(canvas);
        
         // convert force to acceleration a = F/ma
         this.acceleration = this.force.clone().mult(1/this.mass);
@@ -59,9 +68,7 @@ export class Ball {
         // convert velocity into position
         this.position.add(this.velocity.clone().mult(dt));
 
-        // this.checkBounds(canvas); // check for bounds here too, to minimize clipping?
-
-
+        // console.log(this.velocity.magnitude());
     }
 
     bounce(dir) {

@@ -15,12 +15,13 @@ let balls = [];
 
 let fpsTimer = 0;
 
+const iterations = 8;
+
 function update(dt) {
     for (const ball of balls) {
         ball.update(dt, canvas, parseFloat(airResistanceSlider.value));
     }
     
-    draw();
 }
 
 function draw() {
@@ -44,7 +45,7 @@ function loop() {
 
     // update the fps display every quarter second
     if (fpsTimer >= 0.25) {
-        fpsDisplay.textContent = Math.round(1 / dt);
+        fpsDisplay.textContent = Math.round(1 / actualDt);
         fpsTimer = 0;
     }
     fpsTimer += actualDt;
@@ -62,52 +63,77 @@ function loop() {
 
 // impulses for collisions
 function resolveCollisons(dt) {
-    for (let i = 0; i < balls.length; i++) {
-        for (let j = i + 1; j < balls.length; j++) {
-            let b1 = balls[i];
-            let b2 = balls[j];
-            
-            // check if they touch
-            let dir = b1.position.clone().sub(b2.position);
-            const dist = dir.magnitude();
-            // detect collision
-            if (dist <= b1.radius + b2.radius) {
-                const overlap = (b1.radius + b2.radius) - dist;
-                // they overlap, push them apart before applying bounce
-                dir.normalize();
-                if (overlap > 0) {
-                    // dir.normalize();
-
-                    // each moves half distance, they go opposite directions
-                    b1.position.x += dir.x * overlap * 0.5;
-                    b1.position.y += dir.y * overlap * 0.5;
-
-                    b2.position.x -= dir.x * overlap * 0.5;
-                    b2.position.y -= dir.y * overlap * 0.5;
-                }
+    for (let k = 0; k < iterations; k++) {
+        for (let i = 0; i < balls.length; i++) {
+            for (let j = i + 1; j < balls.length; j++) {
+                let b1 = balls[i];
+                let b2 = balls[j];
                 
-                // b1.bounce(dir);
-                // b2.bounce(dir);
+                // check if they touch
+                let dir = b1.position.clone().sub(b2.position);
+                const dist = dir.magnitude();
+                // detect collision
+                if (dist <= b1.radius + b2.radius) {
+                    const overlap = (b1.radius + b2.radius) - dist;
+                    // they overlap, push them apart before applying bounce
+                    dir.normalize();
+                    if (overlap > 0) {
+                        // dir.normalize();
 
-                // find the velocity along the collision axis by dotting it with the direction vector
-                const v1 = b1.velocity.clone().dotProduct(dir);
-                const v2 = b2.velocity.clone().dotProduct(dir);
-                // masses
-                const m1 = b1.mass;
-                const m2 = b2.mass;
+                        // slop damping
+                        // percent correction each iteration
+                        const percent = 0.8;
+                        // overlap amount to ignore 
+                        const slop = 0.1;
 
-                // compute the new velocities
-                const v1n = (((m1 - m2) * v1) + (2 * m2 * v2)) / (m1 + m2);
-                const v2n = (((m2 - m1) * v2) + (2 * m1 * v1)) / (m1 + m2);
+                        const correction = Math.max(overlap - slop, 0) * percent;
 
-                // calculate the new velocity
-                const dv1 = dir.clone().mult(v1n - v1);
-                b1.velocity.add(dv1);
+                        b1.position.add(dir.clone().mult(correction * 0.5));
+                        b2.position.sub(dir.clone().mult(correction * 0.5));
+                    }
+                    
+                    // b1.bounce(dir);
+                    // b2.bounce(dir);
 
-                const dv2 = dir.clone().mult(v2n - v2);
-                b2.velocity.add(dv2);
-            
+                    // find relative velocity between b1 and b2
+                    const relativeVelocity = b1.velocity.clone().sub(b2.velocity);
+                    
+                    // take dot product
+                    const velAlongNormal = relativeVelocity.dotProduct(dir);
+                    
+                    // if the dot product (velocity along axis of colission) is greater than 0, skip
+                    if (velAlongNormal > 0) continue;
+                    
+                    // it's more physically accurate to take the minimum of the two bounciness values instead of averaging the values
+                    // let collisionBounciness = (b1.bounciness + b2.bounciness) / 2;
+                    let collisionBounciness = Math.min(b1.bounciness, b2.bounciness);
+
+                    const REST_THRESHOLD = 5;
+                    // if the colission is tiny, don't even bounce at all (avoid microbounces)
+                    if (Math.abs(velAlongNormal) < REST_THRESHOLD) {
+                        collisionBounciness = 0;
+                    }
+
+                    // standard 2d engine method for collisions as opposed to 1D elastic collision method
+                    const invMass1 = 1 / b1.mass;
+                    const invMass2 = 1 / b2.mass;
+
+                    const j =
+                        -(1 + collisionBounciness) * velAlongNormal /
+                        (invMass1 + invMass2);
+
+                    const impulse = dir.clone().mult(j);
+
+                    b1.velocity.add(
+                        impulse.clone().mult(invMass1)
+                    );
+
+                    b2.velocity.sub(
+                        impulse.clone().mult(invMass2)
+                    );
+                }
             }
+            balls[i].checkBounds(canvas);
         }
     }
 }
@@ -231,5 +257,5 @@ loop();
 
 
 /* TODO:
- add friction, decoration, sound effects, reenforce no clipping (ground and other balls)
+ add friction, decoration, sound effects
  */
