@@ -15,11 +15,11 @@ let balls = [];
 
 let fpsTimer = 0;
 
-const iterations = 8;
+const iterations = 6;
 
 function update(dt) {
     for (const ball of balls) {
-        ball.update(dt, canvas, parseFloat(airResistanceSlider.value));
+        ball.update(dt, parseFloat(airResistanceSlider.value));
     }
     
 }
@@ -183,8 +183,8 @@ canvas.addEventListener("click", (event) => {
     const mass = parseFloat(massSlider.value);
     const bounciness = parseFloat(bouncinessSlider.value);
 
-    // position vector, radius, color, mass, bounciness
-    const ball = new Ball(posVector, radius, color, mass, bounciness);
+    // position vector, radius, color, mass, bounciness, ctx
+    const ball = new Ball(posVector, radius, color, mass, bounciness, ctx);
     balls.push(ball);
 
 });
@@ -197,7 +197,7 @@ document.addEventListener("keydown", (event) => {
     // debug to spawn 20 balls
     if (event.key === "t") {
         const x = canvas.width / 2;
-        const y = canvas.height / 2;
+        const y = canvas.height / 3;
         for (let i = 0; i < 200; i++) {
             // small nudge so clicking twice in the same spot won't stack balls
             const nudge = randomRange(0.01, 0.02);
@@ -257,5 +257,5 @@ loop();
 
 
 /* TODO:
- add friction, decoration, sound effects
+ add friction, decoration, sound effects, OPTIMIZATIONS ( quad tree / linear splicing, drawImg ball coloring optimization)
  */

@@ -1,14 +1,10 @@
 import { gravity, circleDragCoefficient, dragK, gK } from "./globals.js";
 import { Vector2 } from "./vector2.js";
 
-const SLEEP_VELOCITY_THRESHOLD = 5; // sleep speed threshold
-const SLEEP_TIME_REQUIRED = 0.5;    // time sleep threshold
 
 export class Ball {
-    isAsleep = false;
-    sleepTimer = 0;
-
     constructor(position, radius, color, mass, bounciness) {
+       
         this.force = new Vector2(0, 0);
         this.velocity = new Vector2(0, 0);
         this.acceleration = new Vector2(0, 0);
@@ -23,18 +19,17 @@ export class Ball {
     }
 
     draw(ctx) {
+        // gradient looks cool but offers a slight drop in fps
+        // const gradient = ctx.createLinearGradient(this.position.x - this.radius, this.position.y, this.position.x + this.radius, this.position.y);
 
         ctx.beginPath();
         ctx.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = this.isAsleep ? "black" : this.color;
+        ctx.fillStyle = this.color;
         ctx.fill();
     
     }
 
-    update(dt, canvas, airDensity) {
-        if (this.isAsleep) {
-            return;
-        }
+    update(dt, airDensity) {
 
         // reset the forces to 0
         this.force.mult(0);
