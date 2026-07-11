@@ -15,7 +15,8 @@ let balls = [];
 
 let fpsTimer = 0;
 
-const iterations = 8;
+const iterations = 2;
+const substeps = 8;
 
 let airResistance = 1.225;
 
@@ -54,16 +55,21 @@ function loop() {
 
     // update the fps display every quarter second
     if (fpsTimer >= 0.25) {
-        fpsDisplay.textContent = Math.round(1 / actualDt) + " | balls: " + balls.length;
+        fpsDisplay.textContent = Math.round(1 / actualDt) + " | Balls: " + balls.length;
         fpsTimer = 0;
     }
     fpsTimer += actualDt;
 
+    // substeps, which reduce time in between calculations but do fewer corrective calculations
+    let subDt = dt / substeps;
+    for (let i = 0; i < substeps; i++) {
+        
+        update(subDt);
+        
+        resolveCollisons();
+    }
+
     lastTime = currentTime;
-
-    update(dt);
-
-    resolveCollisons();
 
     draw();
     
