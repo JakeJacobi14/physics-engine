@@ -3,6 +3,7 @@ import { Vector2 } from "./vector2.js";
 
 
 export class Ball {
+    
     constructor(position, radius, color, mass, bounciness) {
        
         this.force = new Vector2(0, 0);
@@ -19,7 +20,7 @@ export class Ball {
     }
 
     draw(ctx) {
-        // gradient looks cool but offers a slight drop in fps
+        // gradient looks cool but creates a slight drop in fps
         // const gradient = ctx.createLinearGradient(this.position.x - this.radius, this.position.y, this.position.x + this.radius, this.position.y);
 
         ctx.beginPath();
@@ -37,7 +38,6 @@ export class Ball {
         // apply gravity force F=ma
         this.force.sub(gravity.clone().mult(this.mass * gK));
         
-
         // apply air resistence REWORK LATER
         let speed = this.velocity.magnitude();
         if (speed > 0) {
@@ -50,10 +50,7 @@ export class Ball {
             // this.force.add(this.velocity.clone().mult(dragStrength));
             this.force.add(dragForce);
         }
-        
-        // bounding area of screen
-        // this.checkBounds(canvas);
-       
+               
         // convert force to acceleration a = F/ma
         this.acceleration = this.force.clone().mult(1/this.mass);
 
@@ -63,7 +60,6 @@ export class Ball {
         // convert velocity into position
         this.position.add(this.velocity.clone().mult(dt));
 
-        // console.log(this.velocity.magnitude());
     }
 
     bounce(dir) {
