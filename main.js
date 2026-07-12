@@ -24,9 +24,9 @@ let timeScale = 1;
 
 let nextBallId = 0;
 
-let maxRadius = 25; // track the biggest ball currently in the scene
+let maxSmallRadius = 25; // track the biggest ball currently in the scene
 
-
+const BIG_RADIUS = 30;
 
 function update(dt) {
     for (const ball of balls) {
@@ -55,7 +55,7 @@ function loop() {
 
     // update the fps display every quarter second
     if (fpsTimer >= 0.25) {
-        fpsDisplay.textContent = Math.round(1 / actualDt) + " | Balls: " + balls.length;
+        fpsDisplay.textContent = Math.round(1 / actualDt) + " | Objects: " + balls.length;
         fpsTimer = 0;
     }
     fpsTimer += actualDt;
@@ -84,24 +84,42 @@ function resolveCollisons() {
     const grid = buildGrid();
     // calculate the physics k times
     for (let k = 0; k < iterations; k++) {
-        // for each ball, find its nearby balls (a ball can be in at most 4 cells the size of the ball)
         for (let i = 0; i < balls.length; i++) {
             const b1 = balls[i];
-            const near = getNearbyBalls(b1, grid);
-            // for each nearby ball, check to make sure we haven't already calculated the pair
-            for (let j = 0; j < near.length; j++) {
-                const b2 = near[j];
+            // check for radius size, for a hybrid spatial hashing
+            // big balls check collision pairs manually, small ones use hashing
+            if (b1.radius >= BIG_RADIUS) {
+                // loop through every ball
+                for (let j = 0; j < balls.length; j++) {
+                    const b2 = balls[j];
+                    // if the two are the same ball, skip the iteration
+                    if (b1 === b2) continue;
+                    // if the other ball is also big, then only check one id pair to avoid duplicating the collision
+                    if (b2.radius >= BIG_RADIUS && b2.id < b1.id) continue;
 
-                // if the balls have the same id or we've already seen the pair, skip the pair
-                if (b2.id <= b1.id) continue; // skip self and already-covered pairs
-              
-                // check for collision and resolve it
-                narrowPhase(b1, b2);
+                    narrowPhase(b1, b2);
+
+                }
+            } else {
+                // for each ball, find its nearby balls (a ball can be in at most 4 cells the size of the ball)
+                const near = getNearbyBalls(b1, grid);
+                // for each nearby ball, check to make sure we haven't already calculated the pair
+                for (let j = 0; j < near.length; j++) {
+                    const b2 = near[j];
+
+                    // if the balls have the same id or we've already seen the pair, skip the pair
+                    if (b2.id <= b1.id) continue; // skip self and already-covered pairs
                 
+                    // check for collision and resolve it
+                    narrowPhase(b1, b2);
+                    
+                }
+
             }
 
             // clamp every ball to the bounds of the screen
             balls[i].checkBounds(canvas);
+           
         }
     }
 }
@@ -180,7 +198,7 @@ function narrowPhase(b1, b2) {
 // construct the grid for splicing
 function buildGrid() {
     // the cell size must be as big as the biggest ball
-    const cellSize = maxRadius * 2;
+    const cellSize = maxSmallRadius * 2;
     // new map
     /* 
      we use a map opposed to a 2d array because a map doesn't require us to pre-allocate memory,
@@ -189,6 +207,7 @@ function buildGrid() {
     const grid = new Map();
     // loop through all the balls, create a key of which cell they would be in for X and Y
     for (const ball of balls) {
+        if (ball.radius >= BIG_RADIUS) continue;
         const cellX = Math.floor(ball.position.x / cellSize);
         const cellY = Math.floor(ball.position.y / cellSize);
         const key = cellKey(cellX, cellY)
@@ -206,7 +225,7 @@ function buildGrid() {
 // find balls in the passed-in ball's cell and 8 neighboring cells
 function getNearbyBalls(ball, grid) {
     // the cell size must be as big as the biggest ball
-    const cellSize = maxRadius * 2;
+    const cellSize = maxSmallRadius * 2;
 
     // find which cells the ball is in
     const cellX = Math.floor(ball.position.x / cellSize);
@@ -221,6 +240,7 @@ function getNearbyBalls(ball, grid) {
             // check the ball's cell plus the 8 surrounding it
             const key = cellKey(cellX + x, cellY + y);
             const cell = grid.get(key);
+            
             if (cell !== undefined) {
                 for (const nearBall of cell) {
                     near.push(nearBall);
@@ -243,7 +263,22 @@ function cellKey(cellX, cellY) {
      This gives 32 unique bits to represent our coordinate system of any number of cells up to 2^16
      We're basically packing 2 16-bit ints together, which is faster than string hashing because of string allocation
      */
+
     return (cellX + 32768) * 65536 + (cellY + 32768);
+}
+
+// function to spawn a ball in as well as do other stuff
+function spawnBall(posVector, radius, color, mass, bounciness) {
+    // position vector, radius, color, mass, bounciness
+    const ball = new Ball(posVector, radius, color, mass, bounciness);
+    // increment ball id
+    ball.id = nextBallId++;
+    // add the ball to the array of balls in the scene
+    balls.push(ball);
+    // update maxSmallRadius (largest radius below BIG_RADIUS)
+    if (radius < BIG_RADIUS) {
+        maxSmallRadius = Math.max(maxSmallRadius, radius);
+    }
 }
 
 // Helper function to get a random number in a range
@@ -256,7 +291,7 @@ function resetScene() {
     balls = [];
     nextBallId = 0; // not needed but simple
     radiusSlider.value = 25;
-    maxRadius = 25;
+    maxSmallRadius = 25;
     radiusValueDisplay.textContent = radiusSlider.value;
 
     bouncinessSlider.value = 0.65;
@@ -278,8 +313,32 @@ function resizeCanvas() {
     canvas.height = canvas.clientHeight;
 }
 
+// web audio context
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+// function to play a blip sound effect
+// credit to claude for this function
+function playSpawnSound() {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.15);
+}
+
 // summon one ball
 canvas.addEventListener("click", (event) => {
+    // plop sound when a ball is spawned
+    playSpawnSound();
+
     const rect = canvas.getBoundingClientRect();
 
     const x = event.clientX - rect.left;
@@ -289,16 +348,14 @@ canvas.addEventListener("click", (event) => {
     const posVector = new Vector2(x + nudge, y + nudge);
 
     const radius = parseFloat(radiusSlider.value);
-    maxRadius = Math.max(maxRadius, radius);
 
     const color = colors[Math.floor(randomRange(0, colors.length))]
     const mass = parseFloat(massSlider.value);
     const bounciness = parseFloat(bouncinessSlider.value);
 
     // position vector, radius, color, mass, bounciness, ctx
-    const ball = new Ball(posVector, radius, color, mass, bounciness, ctx);
-    ball.id = nextBallId++;
-    balls.push(ball);
+    spawnBall(posVector, radius, color, mass, bounciness, ctx);
+
 
 });
 
@@ -311,22 +368,19 @@ document.addEventListener("keydown", (event) => {
     if (event.key === "t") {
         const x = canvas.width / 2;
         const y = canvas.height / 3;
-        for (let i = 0; i < 200; i++) {
+        for (let i = 0; i < 100; i++) {
             // small nudge so clicking twice in the same spot won't stack balls
             const nudge = randomRange(0.01, 0.02);
             const posVector = new Vector2(x + nudge, y + nudge);
 
             const radius = parseFloat(radiusSlider.value);
-            maxRadius =  Math.max(maxRadius, radius);
 
             const color = colors[Math.floor(randomRange(0, colors.length))]
             const mass = parseFloat(massSlider.value);
             const bounciness = parseFloat(bouncinessSlider.value);
 
-            // position vector, radius, color, mass, bounciness
-            const ball = new Ball(posVector, radius, color, mass, bounciness);
-            ball.id = nextBallId++;
-            balls.push(ball);
+            spawnBall(posVector, radius, color, mass, bounciness);
+            
         }
        
     }
@@ -342,10 +396,7 @@ document.addEventListener("keydown", (event) => {
             const mass = parseFloat(massSlider.value);
             const bounciness = parseFloat(bouncinessSlider.value);
 
-            const ball = new Ball(posVector, radius, color, mass, bounciness);
-            ball.id = nextBallId++;
-            maxRadius = Math.max(maxRadius, radius);
-            balls.push(ball);
+            spawnBall(posVector, radius, color, mass, bounciness);
         }
     }
 });
@@ -383,6 +434,8 @@ resetTimeScaleButton.addEventListener("click", () => {
 resetButton.addEventListener("click", () => {
   resetScene();
 });
+
+
 
 // listener to resize canvas
 window.addEventListener("resize", resizeCanvas)
