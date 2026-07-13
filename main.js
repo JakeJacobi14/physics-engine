@@ -1,5 +1,5 @@
 import { Ball } from "./ball.js";
-import { colors } from "./globals.js";
+import { colors, REST_THRESHOLD } from "./globals.js";
 import { Vector2 } from "./vector2.js";
 import { radiusSlider, radiusValueDisplay, bouncinessValueDisplay, bouncinessSlider, airResistanceSlider, airResistanceValueDisplay, massSlider, massValueDisplay, timeScaleSlider, timeScaleDisplay, resetTimeScaleButton, fpsDisplay, resetButton } from "./ui.js";
 
@@ -28,6 +28,8 @@ let maxSmallRadius = 25; // track the biggest ball currently in the scene
 
 const BIG_RADIUS = 30;
 
+
+
 function update(dt) {
     for (const ball of balls) {
         ball.update(dt, airResistance);
@@ -53,6 +55,10 @@ function loop() {
     }
     const dt = actualDt * timeScale;
 
+    for (const ball of balls) {
+        ball.updateLastPosition();
+    }
+
     // update the fps display every quarter second
     if (fpsTimer >= 0.25) {
         fpsDisplay.textContent = Math.round(1 / actualDt) + " | Objects: " + balls.length;
@@ -67,6 +73,10 @@ function loop() {
         update(subDt);
         
         resolveCollisons();
+    }
+
+    for (const ball of balls) {
+        ball.updateBallSleep(dt);
     }
 
     lastTime = currentTime;
@@ -126,6 +136,7 @@ function resolveCollisons() {
 
 // actually handles the collision physics
 function narrowPhase(b1, b2) {
+    if (b1.isAsleep && b2.isAsleep) return;
     // direction vector from the center of the two balls
     let dir = b1.position.clone().sub(b2.position);
     // magnitude the direction vector
@@ -144,6 +155,8 @@ function narrowPhase(b1, b2) {
         dir.normalize();
         // they overlap, push them apart before applying impulses
         if (overlap > 0) {
+            b1.wake();
+            b2.wake();
             // slop damping
             // percent correction each iteration
             const percent = 0.8;
@@ -172,10 +185,13 @@ function narrowPhase(b1, b2) {
         // let collisionBounciness = (b1.bounciness + b2.bounciness) / 2;
         let collisionBounciness = Math.min(b1.bounciness, b2.bounciness);
 
-        const REST_THRESHOLD = 5;
         // if the collision is tiny, don't even bounce at all (avoid microbounces)
         if (Math.abs(velAlongNormal) < REST_THRESHOLD) {
             collisionBounciness = 0;
+            
+        } else {
+            b1.wake();
+            b2.wake();
         }
 
         // standard 2d engine method for collisions as opposed to 1D elastic collision method
@@ -290,6 +306,7 @@ function randomRange(min, max) {
 function resetScene() {
     balls = [];
     nextBallId = 0; // not needed but simple
+
     radiusSlider.value = 25;
     maxSmallRadius = 25;
     radiusValueDisplay.textContent = radiusSlider.value;
@@ -305,6 +322,7 @@ function resetScene() {
 
     timeScaleSlider.value = 1;
     timeScaleDisplay.textContent = timeScaleSlider.value;
+    timeScale = 1;
 }
 
 // Resizes the canvas when the window size is changed
@@ -428,6 +446,7 @@ timeScaleSlider.addEventListener("input", () => {
 resetTimeScaleButton.addEventListener("click", () => {
     timeScaleSlider.value = 1;
     timeScaleDisplay.textContent = "1";
+    timeScale = 1;
     
 });
 

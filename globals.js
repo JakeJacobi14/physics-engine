@@ -15,3 +15,4 @@ export const colors = [
                     ];
 
 
+export const REST_THRESHOLD = 10;
