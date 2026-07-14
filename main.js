@@ -1,7 +1,9 @@
 import { Ball } from "./ball.js";
 import { colors, REST_THRESHOLD } from "./globals.js";
 import { Vector2 } from "./vector2.js";
-import { radiusSlider, radiusValueDisplay, bouncinessValueDisplay, bouncinessSlider, airResistanceSlider, airResistanceValueDisplay, massSlider, massValueDisplay, timeScaleSlider, timeScaleDisplay, resetTimeScaleButton, fpsDisplay, resetButton } from "./ui.js";
+import { radiusSlider, radiusValueDisplay, bouncinessValueDisplay, bouncinessSlider, airResistanceSlider, airResistanceValueDisplay, 
+        massSlider, massValueDisplay, frictionSlider, frictionValueDisplay, timeScaleSlider, timeScaleDisplay, resetTimeScaleButton, 
+        fpsDisplay, resetButton } from "./ui.js";
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -72,7 +74,7 @@ function loop() {
         
         update(subDt);
         
-        resolveCollisons();
+        resolveCollisons(dt);
     }
 
     for (const ball of balls) {
@@ -89,7 +91,7 @@ function loop() {
 
 // impulses for collisions
 // uses spatial hashing
-function resolveCollisons() {
+function resolveCollisons(dt) {
     // build the new grid
     const grid = buildGrid();
     // calculate the physics k times
@@ -128,7 +130,7 @@ function resolveCollisons() {
             }
 
             // clamp every ball to the bounds of the screen
-            balls[i].checkBounds(canvas);
+            balls[i].checkBounds(canvas, dt);
            
         }
     }
@@ -155,8 +157,7 @@ function narrowPhase(b1, b2) {
         dir.normalize();
         // they overlap, push them apart before applying impulses
         if (overlap > 0) {
-            b1.wake();
-            b2.wake();
+            
             // slop damping
             // percent correction each iteration
             const percent = 0.8;
@@ -284,9 +285,9 @@ function cellKey(cellX, cellY) {
 }
 
 // function to spawn a ball in as well as do other stuff
-function spawnBall(posVector, radius, color, mass, bounciness) {
+function spawnBall(posVector, radius, color, mass, bounciness, friction) {
     // position vector, radius, color, mass, bounciness
-    const ball = new Ball(posVector, radius, color, mass, bounciness);
+    const ball = new Ball(posVector, radius, color, mass, bounciness, friction);
     // increment ball id
     ball.id = nextBallId++;
     // add the ball to the array of balls in the scene
@@ -319,6 +320,9 @@ function resetScene() {
 
     massSlider.value = 25;
     massValueDisplay.textContent = massSlider.value;
+
+    frictionSlider.value = 2;
+    frictionValueDisplay.textContent = frictionSlider.value;
 
     timeScaleSlider.value = 1;
     timeScaleDisplay.textContent = timeScaleSlider.value;
@@ -370,9 +374,10 @@ canvas.addEventListener("click", (event) => {
     const color = colors[Math.floor(randomRange(0, colors.length))]
     const mass = parseFloat(massSlider.value);
     const bounciness = parseFloat(bouncinessSlider.value);
+    const friction = parseFloat(frictionSlider.value);
 
-    // position vector, radius, color, mass, bounciness, ctx
-    spawnBall(posVector, radius, color, mass, bounciness, ctx);
+    // position vector, radius, color, mass, bounciness
+    spawnBall(posVector, radius, color, mass, bounciness, friction);
 
 
 });
@@ -396,8 +401,9 @@ document.addEventListener("keydown", (event) => {
             const color = colors[Math.floor(randomRange(0, colors.length))]
             const mass = parseFloat(massSlider.value);
             const bounciness = parseFloat(bouncinessSlider.value);
+            const friction = parseFloat(frictionSlider.value);
 
-            spawnBall(posVector, radius, color, mass, bounciness);
+            spawnBall(posVector, radius, color, mass, bounciness, friction);
             
         }
        
@@ -413,8 +419,9 @@ document.addEventListener("keydown", (event) => {
             const color = colors[Math.floor(randomRange(0, colors.length))];
             const mass = parseFloat(massSlider.value);
             const bounciness = parseFloat(bouncinessSlider.value);
+            const friction = parseFloa(frictionSlider.value);
 
-            spawnBall(posVector, radius, color, mass, bounciness);
+            spawnBall(posVector, radius, color, mass, bounciness, friction);
         }
     }
 });
@@ -436,6 +443,10 @@ airResistanceSlider.addEventListener("input", () => {
 // update mass value in the slider
 massSlider.addEventListener("input", () => {
     massValueDisplay.textContent = massSlider.value;
+});
+// update friction value in the slider
+frictionSlider.addEventListener("input", () => {
+    frictionValueDisplay.textContent = frictionSlider.value;
 });
 // update time scale value in the slider
 timeScaleSlider.addEventListener("input", () => {
@@ -465,6 +476,6 @@ loop();
 
 
 /* TODO:
- add friction, decoration, sound effects
- OPTIMIZATIONS (spatial hashing hybrid with big balls, drawImg ball coloring optimization, sleeping bodies)
+ add ball-to-ball friction, decoration, more sound effects
+ OPTIMIZATIONS (drawImg ball coloring optimization, finish sleeping bodies)
  */

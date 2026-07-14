@@ -10,6 +10,9 @@ export const airResistanceValueDisplay = document.getElementById("airResistanceV
 export const massSlider = document.getElementById("massSlider");
 export const massValueDisplay = document.getElementById("massValue");
 
+export const frictionSlider = document.getElementById("frictionSlider");
+export const frictionValueDisplay = document.getElementById("frictionValue");
+
 export const timeScaleSlider = document.getElementById("timeScaleSlider");
 export const timeScaleDisplay = document.getElementById("timeScaleValue");
 export const resetTimeScaleButton = document.getElementById("resetTimeScale");

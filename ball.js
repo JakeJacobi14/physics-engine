@@ -6,7 +6,7 @@ const REST_TIME = 2;
 export class Ball {
     isAsleep = false;
     asleepTimer = 0;
-    constructor(position, radius, color, mass, bounciness) {
+    constructor(position, radius, color, mass, bounciness, friction) {
        
         this.force = new Vector2(0, 0);
         this.velocity = new Vector2(0, 0);
@@ -17,8 +17,10 @@ export class Ball {
         this.radius = radius;
         this.mass = mass
         this.bounciness = bounciness;
+        this.friction = friction;
 
         this.color = color;
+
         
     }
 
@@ -70,8 +72,8 @@ export class Ball {
     
     // function to wake a sleeping ball up
     wake() {
-        this.isAsleep = false;
         this.asleepTimer = 0;
+        this.isAsleep = false;
     }
 
     bounce(dir) {
@@ -86,7 +88,7 @@ export class Ball {
         this.velocity.sub(normal.clone().mult(vDotN * (1 + this.bounciness)));
     }
 
-    checkBounds(canvas) {
+    checkBounds(canvas, dt) {
         const ySpeed = Math.abs(this.velocity.y);
         // check for ground + ceiling and bounce
         if (this.position.y > canvas.height - this.radius || this.position.y < this.radius) {
@@ -103,6 +105,18 @@ export class Ball {
                 this.position.y = this.radius;
             }
     
+        }
+        
+        // ball-to-ground friction
+        const isOnGround = this.position.y >= canvas.height - this.radius - 0.5;
+        if (isOnGround && Math.abs(this.velocity.y) < REST_THRESHOLD) {
+            const slow = this.friction;
+            const drop = slow * dt;
+            if (Math.abs(this.velocity.x) > drop) {
+                this.velocity.x -= Math.sign(this.velocity.x) * drop;
+            } else {
+                this.velocity.x = 0;
+            }
         }
 
         const xSpeed = Math.abs(this.velocity.x);
@@ -127,32 +141,31 @@ export class Ball {
 
     updateBallSleep(dt) {
 
-        const dx = this.position.x - this.lastPosition.x;
-        const dy = this.position.y - this.lastPosition.y;
-        const movement = Math.sqrt(dx * dx + dy * dy);
+        // const dx = this.position.x - this.lastPosition.x;
+        // const dy = this.position.y - this.lastPosition.y;
+        // const movement = Math.sqrt(dx * dx + dy * dy);
 
-        if (this.isAsleep) {
-            this.velocity.mult(0);
-            this.acceleration.mult(0);
-            return;
-        }
+        // if (this.isAsleep) {
+        //     this.velocity.mult(0);
+        //     this.acceleration.mult(0);
+        //     return;
+        // }
 
-        const xStill = Math.abs(this.velocity.x) < REST_THRESHOLD;
-        const yStill = Math.abs(this.velocity.y) < REST_THRESHOLD;
+        // const xStill = Math.abs(this.velocity.x) < REST_THRESHOLD;
+        // const yStill = Math.abs(this.velocity.y) < REST_THRESHOLD;
         
-        if (xStill && yStill && movement < 0.5) {
-            this.asleepTimer += dt;
-            if (this.asleepTimer >= REST_TIME) {
-                this.isAsleep = true;
-                this.velocity.mult(0);
-                this.acceleration.mult(0);
-            }
-        } else {
-            console.log(`xStill: ${Math.abs(this.velocity.x)} yStill: ${Math.abs(this.velocity.y)} movement: ${movement} `);
-            this.wake();
-        }
+        // if (xStill && yStill && movement < 0.5) {
+        //     this.asleepTimer += dt;
+        //     if (this.asleepTimer >= REST_TIME) {
+        //         this.isAsleep = true;
+        //         this.velocity.mult(0);
+        //         this.acceleration.mult(0);
+        //     }
+        // } else {
+        //     this.wake();
+        // }
     }
-
+    
     updateLastPosition() {
         this.lastPosition.x = this.position.x;
         this.lastPosition.y = this.position.y;

@@ -16,8 +16,11 @@ canvas {
     height: 20vh;
     background-color: #555555;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    justify-content: space-evenly;
+    justify-content: center;
+    gap: 12px;
+    padding: 12px 0;
 
 }
 
