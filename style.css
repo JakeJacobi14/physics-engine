@@ -61,3 +61,11 @@ canvas {
     font-family: sans-serif;
     font-size: 14px;
 }
+
+/* highlight the active mode button */
+#controls button.active {
+    background-color: #0073ff;
+    color: white;
+    font-weight: bold;
+    border-radius: 6px;
+}

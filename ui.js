@@ -20,3 +20,6 @@ export const resetTimeScaleButton = document.getElementById("resetTimeScale");
 export const fpsDisplay = document.getElementById("fpsValue");
 
 export const resetButton = document.getElementById("resetButton");
+
+export const spawnModeButton = document.getElementById("spawnMode");
+export const pushModeButton = document.getElementById("pushMode");

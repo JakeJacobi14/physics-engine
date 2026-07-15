@@ -3,13 +3,15 @@ import { colors, REST_THRESHOLD } from "./globals.js";
 import { Vector2 } from "./vector2.js";
 import { radiusSlider, radiusValueDisplay, bouncinessValueDisplay, bouncinessSlider, airResistanceSlider, airResistanceValueDisplay, 
         massSlider, massValueDisplay, frictionSlider, frictionValueDisplay, timeScaleSlider, timeScaleDisplay, resetTimeScaleButton, 
-        fpsDisplay, resetButton } from "./ui.js";
+        fpsDisplay, resetButton, spawnModeButton, pushModeButton } from "./ui.js";
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
 canvas.width = canvas.clientWidth;
 canvas.height = canvas.clientHeight;
+
+let mode = 1; // 1 for spawn, 2 for push
 
 let lastTime = performance.now();
 
@@ -30,6 +32,10 @@ let maxSmallRadius = 25; // track the biggest ball currently in the scene
 
 const BIG_RADIUS = 30;
 
+let isHolding = false;
+
+let mouseX = 0;
+let mouseY = 0;
 
 
 function update(dt) {
@@ -269,6 +275,25 @@ function getNearbyBalls(ball, grid) {
     return near;
 }
 
+// function that pushes balls outwards from x and y coordinates
+function pushBalls(x, y, power) {
+    for (const ball of balls) {
+        const dir = ball.position.clone().sub(new Vector2(x, y));
+        const dist = dir.magnitude();
+
+        // 250 is the falloff radius, 0 to avoid dividing by 0
+        if (dist == 0 || dist > 250) continue;
+
+        dir.normalize();
+        
+        // power shrinks linearly with distance
+        const strength = power / dist;
+        ball.velocity.add(dir.mult(strength));
+        // wake a sleeping ball up
+        ball.wake();
+    }
+}
+
 // Helper function to get a unique int key for any 2 cells
 function cellKey(cellX, cellY) {
     // turn string keys into int keys
@@ -296,6 +321,13 @@ function spawnBall(posVector, radius, color, mass, bounciness, friction) {
     if (radius < BIG_RADIUS) {
         maxSmallRadius = Math.max(maxSmallRadius, radius);
     }
+}
+
+// function to re-call pushBalls while the user is holding
+function constantlyPushBalls(power) {
+    if (!isHolding) return;
+    pushBalls(mouseX, mouseY, power);
+    requestAnimationFrame(() => constantlyPushBalls(power));
 }
 
 // Helper function to get a random number in a range
@@ -327,6 +359,10 @@ function resetScene() {
     timeScaleSlider.value = 1;
     timeScaleDisplay.textContent = timeScaleSlider.value;
     timeScale = 1;
+
+    mode = 1; // reset to spawn mode
+    spawnModeButton.classList.add("active");
+    pushModeButton.classList.remove("active");
 }
 
 // Resizes the canvas when the window size is changed
@@ -358,27 +394,61 @@ function playSpawnSound() {
 
 // summon one ball
 canvas.addEventListener("click", (event) => {
-    // plop sound when a ball is spawned
-    playSpawnSound();
+    // spawn mode
+    if (mode === 1) {
+        // plop sound when a ball is spawned
+        playSpawnSound();
 
+        // get mouse position
+        const rect = canvas.getBoundingClientRect();
+
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        // small nudge so clicking twice in the same spot won't stack balls
+        const nudge = randomRange(0.01, 0.02);
+        const posVector = new Vector2(x + nudge, y + nudge);
+
+        const radius = parseFloat(radiusSlider.value);
+
+        const color = colors[Math.floor(randomRange(0, colors.length))]
+        const mass = parseFloat(massSlider.value);
+        const bounciness = parseFloat(bouncinessSlider.value);
+        const friction = parseFloat(frictionSlider.value);
+
+        // position vector, radius, color, mass, bounciness
+        spawnBall(posVector, radius, color, mass, bounciness, friction);
+    }
+});
+
+// hold tracking for the push mode
+canvas.addEventListener("mousedown", (event) => {
+    if (mode == 2) {
+        isHolding = true;
+        // get mouse position
+        const rect = canvas.getBoundingClientRect();
+
+        mouseX = event.clientX - rect.left;
+        mouseY = event.clientY - rect.top;
+
+        const power = 10000;
+
+        constantlyPushBalls(power);
+    }
+});
+document.addEventListener("mouseup", () => {
+    isHolding = false;
+    
+});
+// canvas.addEventListener("mouseleave", () => {
+//     isHolding = false;
+
+// });
+document.addEventListener("mousemove", (event) => {
+    // update mouse position
     const rect = canvas.getBoundingClientRect();
 
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    // small nudge so clicking twice in the same spot won't stack balls
-    const nudge = randomRange(0.01, 0.02);
-    const posVector = new Vector2(x + nudge, y + nudge);
-
-    const radius = parseFloat(radiusSlider.value);
-
-    const color = colors[Math.floor(randomRange(0, colors.length))]
-    const mass = parseFloat(massSlider.value);
-    const bounciness = parseFloat(bouncinessSlider.value);
-    const friction = parseFloat(frictionSlider.value);
-
-    // position vector, radius, color, mass, bounciness
-    spawnBall(posVector, radius, color, mass, bounciness, friction);
-
+    mouseX = event.clientX - rect.left;
+    mouseY = event.clientY - rect.top;
 
 });
 
@@ -419,7 +489,7 @@ document.addEventListener("keydown", (event) => {
             const color = colors[Math.floor(randomRange(0, colors.length))];
             const mass = parseFloat(massSlider.value);
             const bounciness = parseFloat(bouncinessSlider.value);
-            const friction = parseFloa(frictionSlider.value);
+            const friction = parseFloat(frictionSlider.value);
 
             spawnBall(posVector, radius, color, mass, bounciness, friction);
         }
@@ -465,6 +535,18 @@ resetButton.addEventListener("click", () => {
   resetScene();
 });
 
+spawnModeButton.addEventListener("click", () => {
+    mode = 1;
+    spawnModeButton.classList.add("active");
+    pushModeButton.classList.remove("active");
+
+});
+pushModeButton.addEventListener("click", () => {
+    mode = 2;
+    spawnModeButton.classList.remove("active");
+    pushModeButton.classList.add("active");
+    
+});
 
 
 // listener to resize canvas
@@ -472,6 +554,7 @@ window.addEventListener("resize", resizeCanvas)
 
 
 resizeCanvas();
+resetScene();
 loop();
 
 
