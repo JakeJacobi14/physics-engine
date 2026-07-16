@@ -392,6 +392,47 @@ function playSpawnSound() {
     osc.stop(audioCtx.currentTime + 0.15);
 }
 
+function benchmark(count, frames) {
+    resetScene();
+    for (let i = 0; i < count; i++) {
+        const x = randomRange(0, canvas.width);
+        const y = randomRange(0, canvas.height);
+        const posVector = new Vector2(x, y);
+
+        const radius = randomRange(5, 40);
+        const color = colors[Math.floor(randomRange(0, colors.length))];
+        const mass = randomRange(1, 100);
+        const bounciness = randomRange(0, 0.99);
+        const friction = randomRange(0, 10);
+
+        spawnBall(posVector, radius, color, mass, bounciness, friction);
+
+    }
+
+    const times = [];
+    for (let i = 0; i < frames; i++) {
+        const start = performance.now();
+        update(0.016);
+        resolveCollisons(0.016);
+        times.push(performance.now() - start);
+    }
+    const averageTime = times.reduce((a, b) => a + b) / times.length; // lambda function
+    const worstTime = Math.max(...times); // spread operator
+    console.log(`${count} bodies: avg ${averageTime.toFixed(2)}ms, worst ${worstTime.toFixed(2)}ms`);
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
 // summon one ball
 canvas.addEventListener("click", (event) => {
     // spawn mode
@@ -480,19 +521,7 @@ document.addEventListener("keydown", (event) => {
     }
     // random balls for testing
     if (event.key === "y") {
-        for (let i = 0; i < 1000; i++) {
-            const x = randomRange(0, canvas.width);
-            const y = randomRange(0, canvas.height);
-            const posVector = new Vector2(x, y);
-
-            const radius = 8;
-            const color = colors[Math.floor(randomRange(0, colors.length))];
-            const mass = parseFloat(massSlider.value);
-            const bounciness = parseFloat(bouncinessSlider.value);
-            const friction = parseFloat(frictionSlider.value);
-
-            spawnBall(posVector, radius, color, mass, bounciness, friction);
-        }
+        benchmark(300, 100);
     }
 });
 
