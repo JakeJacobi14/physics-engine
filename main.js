@@ -1,9 +1,12 @@
 import { Ball } from "./ball.js";
+import { Polygon } from "./polygon.js";
 import { colors, REST_THRESHOLD } from "./globals.js";
 import { Vector2 } from "./vector2.js";
-import { radiusSlider, radiusValueDisplay, bouncinessValueDisplay, bouncinessSlider, airResistanceSlider, airResistanceValueDisplay, 
-        massSlider, massValueDisplay, frictionSlider, frictionValueDisplay, timeScaleSlider, timeScaleDisplay, resetTimeScaleButton, 
-        fpsDisplay, resetButton, spawnModeButton, pushModeButton } from "./ui.js";
+import {
+    radiusSlider, radiusValueDisplay, bouncinessValueDisplay, bouncinessSlider, airResistanceSlider, airResistanceValueDisplay,
+    massSlider, massValueDisplay, frictionSlider, frictionValueDisplay, timeScaleSlider, timeScaleDisplay, resetTimeScaleButton,
+    fpsDisplay, resetButton, spawnModeButton, pushModeButton
+} from "./ui.js";
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -77,9 +80,9 @@ function loop() {
     // substeps, which reduce time in between calculations but do fewer corrective calculations
     let subDt = dt / substeps;
     for (let i = 0; i < substeps; i++) {
-        
+
         update(subDt);
-        
+
         resolveCollisons(dt);
     }
 
@@ -90,7 +93,7 @@ function loop() {
     lastTime = currentTime;
 
     draw();
-    
+
     requestAnimationFrame(loop);
     // setTimeout(loop, 0); // <-- fps test, with a clamped 4ms delay maybe
 }
@@ -127,17 +130,17 @@ function resolveCollisons(dt) {
 
                     // if the balls have the same id or we've already seen the pair, skip the pair
                     if (b2.id <= b1.id) continue; // skip self and already-covered pairs
-                
+
                     // check for collision and resolve it
                     narrowPhase(b1, b2);
-                    
+
                 }
 
             }
 
             // clamp every ball to the bounds of the screen
             balls[i].checkBounds(canvas, dt);
-           
+
         }
     }
 }
@@ -163,15 +166,15 @@ function narrowPhase(b1, b2) {
         dir.normalize();
         // they overlap, push them apart before applying impulses
         if (overlap > 0) {
-            
+
             // slop damping
             // percent correction each iteration
             const percent = 0.8;
             // overlap amount to ignore 
             const slop = 0.05;
-        
+
             const correction = Math.max(overlap - slop, 0) * percent;
-            
+
             // balls with more mass in a collision move less
             const totalMass = invMass1 + invMass2;
 
@@ -181,13 +184,13 @@ function narrowPhase(b1, b2) {
 
         // find relative velocity between b1 and b2
         const relativeVelocity = b1.velocity.clone().sub(b2.velocity);
-        
+
         // take dot product
         const velAlongNormal = relativeVelocity.dotProduct(dir);
-        
+
         // if the dot product (velocity along axis of collision) is greater than 0, skip
         if (velAlongNormal > 0) return;
-        
+
         // it's more physically accurate to take the minimum of the two bounciness values instead of averaging the values
         // let collisionBounciness = (b1.bounciness + b2.bounciness) / 2;
         let collisionBounciness = Math.min(b1.bounciness, b2.bounciness);
@@ -195,7 +198,7 @@ function narrowPhase(b1, b2) {
         // if the collision is tiny, don't even bounce at all (avoid microbounces)
         if (Math.abs(velAlongNormal) < REST_THRESHOLD) {
             collisionBounciness = 0;
-            
+
         } else {
             b1.wake();
             b2.wake();
@@ -253,7 +256,7 @@ function getNearbyBalls(ball, grid) {
     // find which cells the ball is in
     const cellX = Math.floor(ball.position.x / cellSize);
     const cellY = Math.floor(ball.position.y / cellSize);
-    
+
     // nearby balls within the 9 cells we're searching
     const near = [];
 
@@ -263,7 +266,7 @@ function getNearbyBalls(ball, grid) {
             // check the ball's cell plus the 8 surrounding it
             const key = cellKey(cellX + x, cellY + y);
             const cell = grid.get(key);
-            
+
             if (cell !== undefined) {
                 for (const nearBall of cell) {
                     near.push(nearBall);
@@ -285,7 +288,7 @@ function pushBalls(x, y, power) {
         if (dist == 0 || dist > 250) continue;
 
         dir.normalize();
-        
+
         // power shrinks linearly with distance
         const strength = power / dist;
         ball.velocity.add(dir.mult(strength));
@@ -423,6 +426,13 @@ function benchmark(count, frames) {
 
 }
 
+function makeSquareVertices(size) {
+    const k = size / 2;
+    return [
+        new Vector2(-k, -k), new Vector2(k, -k),
+        new Vector2(k, k), new Vector2(-k, k)
+    ];
+}
 
 
 
@@ -478,7 +488,7 @@ canvas.addEventListener("mousedown", (event) => {
 });
 document.addEventListener("mouseup", () => {
     isHolding = false;
-    
+
 });
 // canvas.addEventListener("mouseleave", () => {
 //     isHolding = false;
@@ -515,14 +525,23 @@ document.addEventListener("keydown", (event) => {
             const friction = parseFloat(frictionSlider.value);
 
             spawnBall(posVector, radius, color, mass, bounciness, friction);
-            
+
         }
-       
+
     }
     // random balls for testing
     if (event.key === "y") {
         benchmark(300, 100);
     }
+    // spawn a test polygon
+    if (event.key === "e") {
+        const x = canvas.width / 2;
+        const y = canvas.height / 3;
+        const posVector = new Vector2(x, y);
+        const vertices = makeSquareVertices(45);
+        balls.push(new Polygon(posVector, vertices, "red", 10, 0, 0))
+    }
+     
 });
 
 
@@ -557,11 +576,11 @@ resetTimeScaleButton.addEventListener("click", () => {
     timeScaleSlider.value = 1;
     timeScaleDisplay.textContent = "1";
     timeScale = 1;
-    
+
 });
 
 resetButton.addEventListener("click", () => {
-  resetScene();
+    resetScene();
 });
 
 spawnModeButton.addEventListener("click", () => {
@@ -574,7 +593,7 @@ pushModeButton.addEventListener("click", () => {
     mode = 2;
     spawnModeButton.classList.remove("active");
     pushModeButton.classList.add("active");
-    
+
 });
 
 

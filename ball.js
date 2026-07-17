@@ -7,7 +7,7 @@ export class Ball {
     isAsleep = false;
     asleepTimer = 0;
     constructor(position, radius, color, mass, bounciness, friction) {
-       
+        this.radius = 25;
         this.force = new Vector2(0, 0);
         this.velocity = new Vector2(0, 0);
         this.acceleration = new Vector2(0, 0);
@@ -21,7 +21,7 @@ export class Ball {
 
         this.color = color;
 
-        
+
     }
 
     draw(ctx) {
@@ -32,7 +32,7 @@ export class Ball {
         ctx.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.isAsleep ? "black" : this.color;
         ctx.fill();
-    
+
     }
 
     update(dt, airDensity) {
@@ -46,7 +46,7 @@ export class Ball {
 
         // apply gravity force F=ma
         this.force.sub(gravity.clone().mult(this.mass * gK));
-        
+
         // apply air resistence REWORK LATER
         if (speed > 0) {
             // Fd = (1/2)(p)(C)(PI)(r^2)(|v|)(v)
@@ -58,9 +58,9 @@ export class Ball {
             // this.force.add(this.velocity.clone().mult(dragStrength));
             this.force.add(dragForce);
         }
-               
+
         // convert force to acceleration a = F/ma
-        this.acceleration = this.force.clone().mult(1/this.mass);
+        this.acceleration = this.force.clone().mult(1 / this.mass);
 
         // convert force to velocity
         this.velocity.sub(this.acceleration.clone().mult(dt));
@@ -69,7 +69,7 @@ export class Ball {
         this.position.add(this.velocity.clone().mult(dt));
 
     }
-    
+
     // function to wake a sleeping ball up
     wake() {
         this.asleepTimer = 0;
@@ -104,9 +104,9 @@ export class Ball {
             } else if (this.position.y < this.radius) { // ceiling
                 this.position.y = this.radius;
             }
-    
+
         }
-        
+
         // ball-to-ground friction
         const isOnGround = this.position.y >= canvas.height - this.radius - 0.5;
         if (isOnGround && Math.abs(this.velocity.y) < REST_THRESHOLD) {
@@ -135,7 +135,7 @@ export class Ball {
             else if (this.position.x < this.radius) { // left wall
                 this.position.x = this.radius;
             }
-    
+
         }
     }
 
@@ -153,7 +153,7 @@ export class Ball {
 
         // const xStill = Math.abs(this.velocity.x) < REST_THRESHOLD;
         // const yStill = Math.abs(this.velocity.y) < REST_THRESHOLD;
-        
+
         // if (xStill && yStill && movement < 0.5) {
         //     this.asleepTimer += dt;
         //     if (this.asleepTimer >= REST_TIME) {
@@ -165,10 +165,10 @@ export class Ball {
         //     this.wake();
         // }
     }
-    
+
     updateLastPosition() {
         this.lastPosition.x = this.position.x;
         this.lastPosition.y = this.position.y;
     }
-    
+
 }
