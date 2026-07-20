@@ -148,6 +148,20 @@ function resolveCollisons(dt) {
 // actually handles the collision physics
 function narrowPhase(b1, b2) {
     if (b1.isAsleep && b2.isAsleep) return;
+    if (b1.type === "circle" && b2.type === "circle") {
+        circleCircle(b1, b2);
+    } else if (b1.type === "circle" && b2.type === "polygon") {
+        circlePolygon(b1, b2);
+    }
+    else if (b1.type === "polygon" && b2.type === "circle") {
+        circlePolygon(b2, b1);
+    } else {
+        polygonPolygon(b1, b2);
+    }
+
+}
+
+function circleCircle(b1, b2) {
     // direction vector from the center of the two balls
     let dir = b1.position.clone().sub(b2.position);
     // magnitude the direction vector
@@ -326,6 +340,14 @@ function spawnBall(posVector, radius, color, mass, bounciness, friction) {
     }
 }
 
+function spawnPolygon(posVector, vertices, color, mass, bounciness, friction) {
+    const polygon = new Polygon(posVector, vertices, color, mass, bounciness, friction);
+    polygon.id = nextBallId++;
+    balls.push(polygon);
+
+}
+
+
 // function to re-call pushBalls while the user is holding
 function constantlyPushBalls(power) {
     if (!isHolding) return;
@@ -385,7 +407,7 @@ function playSpawnSound() {
 
     osc.type = "sine";
     osc.frequency.setValueAtTime(440, audioCtx.currentTime);
-    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
 
     osc.connect(gain);
@@ -394,7 +416,38 @@ function playSpawnSound() {
     osc.start();
     osc.stop(audioCtx.currentTime + 0.15);
 }
+// button click sound effect
+function playClickSound() {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
 
+    osc.type = "square";
+    osc.frequency.setValueAtTime(1100, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.04);
+}
+// slider movement sound effect
+function playSliderTick() {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = "square";
+    osc.frequency.setValueAtTime(2100, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.015);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.015);
+}
 function benchmark(count, frames) {
     resetScene();
     for (let i = 0; i < count; i++) {
@@ -433,10 +486,6 @@ function makeSquareVertices(size) {
         new Vector2(k, k), new Vector2(-k, k)
     ];
 }
-
-
-
-
 
 
 
@@ -510,6 +559,8 @@ document.addEventListener("keydown", (event) => {
     }
     // debug to spawn 20 balls
     if (event.key === "t") {
+        // plop sound when a ball is spawned
+        playSpawnSound();
         const x = canvas.width / 2;
         const y = canvas.height / 3;
         for (let i = 0; i < 100; i++) {
@@ -531,68 +582,85 @@ document.addEventListener("keydown", (event) => {
     }
     // random balls for testing
     if (event.key === "y") {
+        // plop sound when a ball is spawned
+        playSpawnSound();
+
         benchmark(300, 100);
     }
     // spawn a test polygon
     if (event.key === "e") {
-        const x = canvas.width / 2;
+        // plop sound when a ball is spawned
+        playSpawnSound();
+
+        const x = randomRange(20, canvas.width - 20);
         const y = canvas.height / 3;
         const posVector = new Vector2(x, y);
         const vertices = makeSquareVertices(45);
-        balls.push(new Polygon(posVector, vertices, "red", 10, 0, 0))
+
+        spawnPolygon(posVector, vertices, "red", 10, 0, 0);
     }
-     
+
 });
 
 
 // update radius value in the slider
 radiusSlider.addEventListener("input", () => {
     radiusValueDisplay.textContent = radiusSlider.value;
+    playSliderTick();
 });
 // update bounciness value in the slider
 bouncinessSlider.addEventListener("input", () => {
     bouncinessValueDisplay.textContent = bouncinessSlider.value;
+    playSliderTick();
 });
 // update air resistance value in the slider
 airResistanceSlider.addEventListener("input", () => {
     airResistanceValueDisplay.textContent = airResistanceSlider.value;
     airResistance = airResistanceSlider.value;
+    playSliderTick();
 });
 // update mass value in the slider
 massSlider.addEventListener("input", () => {
     massValueDisplay.textContent = massSlider.value;
+    playSliderTick()
 });
 // update friction value in the slider
 frictionSlider.addEventListener("input", () => {
     frictionValueDisplay.textContent = frictionSlider.value;
+    playSliderTick();
 });
 // update time scale value in the slider
 timeScaleSlider.addEventListener("input", () => {
     timeScaleDisplay.textContent = timeScaleSlider.value;
     timeScale = timeScaleSlider.value;
+    playSliderTick();
 });
 // listener for the time scale reset button
 resetTimeScaleButton.addEventListener("click", () => {
     timeScaleSlider.value = 1;
     timeScaleDisplay.textContent = "1";
     timeScale = 1;
+    playClickSound();
 
 });
 
 resetButton.addEventListener("click", () => {
     resetScene();
+    playClickSound();
 });
 
 spawnModeButton.addEventListener("click", () => {
     mode = 1;
     spawnModeButton.classList.add("active");
     pushModeButton.classList.remove("active");
+    playClickSound();
 
 });
 pushModeButton.addEventListener("click", () => {
     mode = 2;
     spawnModeButton.classList.remove("active");
     pushModeButton.classList.add("active");
+    playClickSound();
 
 });
 
@@ -607,6 +675,6 @@ loop();
 
 
 /* TODO:
- add ball-to-ball friction, decoration, more sound effects
+ add ball-to-ball friction, more sound effects
  OPTIMIZATIONS (drawImg ball coloring optimization, finish sleeping bodies)
  */

@@ -8,11 +8,12 @@ export const gK = 200; // arbitrary coefficient for gravity to keep it 9.81
 export const fK = 0.2; // friction coefficient
 
 export const colors = [
-                    "red", "pink", "orange", "white", "blue", "green", "aqua", "brown", "yellow", "orange", 
-                    "purple", "fuchsia", "darkslateblue", "darkgoldenred", "coral", "chartreuse", "aquamarine", 
-                    "gold", "firebrick", "dodgerblue", "darkviolet", "aliceblue", "forestgreen", "chocolate",
-                    "darkseagreen", "darkslateblue", "ghostwhite", "darkorchid", "blanchedalmond", "cornflowerblue", "darkgreen"
-                    ];
+    "red", "pink", "orange", "blue", "green", "aqua", "brown", "yellow",
+    "purple", "fuchsia", "darkslateblue", "coral", "chartreuse", "aquamarine",
+    "gold", "firebrick", "dodgerblue", "darkviolet", "forestgreen", "chocolate",
+    "darkseagreen", "darkorchid", "cornflowerblue", "darkgreen", "darkgoldenrod",
+    "tomato", "mediumspringgreen", "orchid", "crimson"
+];
 
 
 export const REST_THRESHOLD = 10;

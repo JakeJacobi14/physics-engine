@@ -4,10 +4,11 @@ import { Vector2 } from "./vector2.js";
 const REST_TIME = 2;
 
 export class Ball {
+    
     isAsleep = false;
     asleepTimer = 0;
     constructor(position, radius, color, mass, bounciness, friction) {
-        this.radius = 25;
+        this.type = "circle";
         this.force = new Vector2(0, 0);
         this.velocity = new Vector2(0, 0);
         this.acceleration = new Vector2(0, 0);
@@ -25,20 +26,32 @@ export class Ball {
     }
 
     draw(ctx) {
-        // gradient looks cool but creates a slight drop in fps
-        // const gradient = ctx.createLinearGradient(this.position.x - this.radius, this.position.y, this.position.x + this.radius, this.position.y);
-
         ctx.beginPath();
         ctx.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.isAsleep ? "black" : this.color;
         ctx.fill();
+        // draw shine for only bigger balls
+        if (this.radius > 12) {
+            // shine
+            ctx.beginPath();
+            ctx.arc(
+                this.position.x - this.radius * 0.32,
+                this.position.y - this.radius * 0.32,
+                this.radius * 0.32,
+                0,
+                Math.PI * 2
+            );
+            ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+            ctx.fill();
+        }
+        
+    
 
     }
 
     update(dt, airDensity) {
         // console.log(this.velocity.magnitude());
         if (this.isAsleep) return;
-
 
         let speed = this.velocity.magnitude();
         // reset the forces to 0

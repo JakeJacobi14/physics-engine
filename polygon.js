@@ -6,6 +6,7 @@ export class Polygon {
     isAsleep = false;
     asleepTimer = 0;
     constructor(position, vertices, color, mass, bounciness, friction) {
+        this.type = "polygon";
         this.force = new Vector2(0, 0);
         this.velocity = new Vector2(0, 0);
         this.acceleration = new Vector2(0, 0);
@@ -13,6 +14,8 @@ export class Polygon {
         this.lastPosition = position.clone();
 
         this.vertices = vertices;
+        // bounding radius, set to furthest vertex
+        this.radius = Math.max(...this.vertices.map(v => v.magnitude()));
         this.mass = mass
         this.bounciness = bounciness;
         this.friction = friction;
@@ -100,5 +103,9 @@ export class Polygon {
         this.lastPosition.y = this.position.y;
     }
 
+    wake() {
+        this.asleepTimer = 0;
+        this.isAsleep = false;
+    }
 
 }
