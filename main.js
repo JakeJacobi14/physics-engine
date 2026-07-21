@@ -23,7 +23,7 @@ let objects = [];
 
 let fpsTimer = 0;
 
-const iterations = 2;
+const iterations = 3;
 const substeps = 8;
 
 let airResistance = 1.225;
@@ -42,10 +42,12 @@ let mouseX = 0;
 let mouseY = 0;
 
 let currentInfoObject;
+let draggedBall = null;
 
 
 function update(dt) {
     for (const ball of objects) {
+        if (ball.isBeingDragged) continue;
         ball.update(dt, airResistance);
     }
 }
@@ -79,7 +81,7 @@ function loop() {
         ball.updateLastPosition();
     }
 
-    
+    updateDrag(dt);
 
     // substeps, which reduce time in between calculations but do fewer corrective calculations
     let subDt = dt / substeps;
@@ -87,7 +89,7 @@ function loop() {
 
         update(subDt);
 
-        resolveCollisons(dt);
+        resolveCollisons(subDt);
     }
 
     for (const ball of objects) {
@@ -156,8 +158,8 @@ function narrowPhase(b1, b2) {
         circleCircle(b1, b2);
     } else if (b1.type === "circle" && b2.type === "polygon") {
         circlePolygon(b1, b2);
-    }
-    else if (b1.type === "polygon" && b2.type === "circle") {
+    } else if (b1.type === "polygon" && b2.type === "circle") {
+        // always keep the circle first and the polygon second
         circlePolygon(b2, b1);
     } else {
         polygonPolygon(b1, b2);
@@ -173,82 +175,253 @@ function circleCircle(b1, b2) {
     // sum of the radii, the ideal distance of touching balls
     const radiusSum = b1.radius + b2.radius;
 
-    // detect collision
-    if (dist <= radiusSum) {
-        // inverse masses, needed a few times 
-        const invMass1 = 1 / b1.mass;
-        const invMass2 = 1 / b2.mass;
+    if (dist > radiusSum) return;
 
-        const overlap = (radiusSum) - dist;
-        // normalize the direction vector
+    // normalize the direction vector
+    if (dist > 0) {
         dir.normalize();
-        // they overlap, push them apart before applying impulses
-        if (overlap > 0) {
-
-            // slop damping
-            // percent correction each iteration
-            const percent = 0.8;
-            // overlap amount to ignore 
-            const slop = 0.05;
-
-            const correction = Math.max(overlap - slop, 0) * percent;
-
-            // balls with more mass in a collision move less
-            const totalMass = invMass1 + invMass2;
-
-            b1.position.add(dir.clone().mult(correction * invMass1 / totalMass));
-            b2.position.sub(dir.clone().mult(correction * invMass2 / totalMass));
-        }
-
-        // find relative velocity between b1 and b2
-        const relativeVelocity = b1.velocity.clone().sub(b2.velocity);
-
-        // take dot product
-        const velAlongNormal = relativeVelocity.dotProduct(dir);
-
-        // if the dot product (velocity along axis of collision) is greater than 0, skip
-        if (velAlongNormal > 0) return;
-
-        // it's more physically accurate to take the minimum of the two bounciness values instead of averaging the values
-        // let collisionBounciness = (b1.bounciness + b2.bounciness) / 2;
-        let collisionBounciness = Math.min(b1.bounciness, b2.bounciness);
-
-        // if the collision is tiny, don't even bounce at all (avoid microbounces)
-        if (Math.abs(velAlongNormal) < REST_THRESHOLD) {
-            collisionBounciness = 0;
-
-        } else {
-            b1.wake();
-            b2.wake();
-        }
-
-        // standard 2d engine method for collisions as opposed to 1D elastic collision method
-        const j =
-            -(1 + collisionBounciness) * velAlongNormal /
-            (invMass1 + invMass2);
-
-        const impulse = dir.mult(j);
-
-        b1.velocity.add(
-            impulse.clone().mult(invMass1)
-        );
-
-        b2.velocity.sub(
-            impulse.mult(invMass2)
-        );
+    } else {
+        dir = new Vector2(1, 0);
     }
+    const overlap = radiusSum - dist;
+
+    resolveImpulse(b1, b2, dir, overlap);
 }
 
 function circlePolygon(b1, b2) {
+    // SAT
+    const vertices = b2.getWorldVertices();
+    let highestEdgeDot = -Infinity;
+    let bestEdge = 0;
+
+    for (let i = 0; i < vertices.length; i++) {
+        // get the 2 vertices and form the edge AB
+        const a = vertices[i];
+        // next point, unless i is the last vertex, in which case wrap around back to 0
+        const b = vertices[i === vertices.length - 1 ? 0 : i + 1];
+        // form the edge AB
+        const edge = b.clone().sub(a);
+        // (y, -x) is always outwards because the vertices are created clockwise
+        const normal = new Vector2(edge.y, -edge.x).normalize();
+
+        // calculate distance to the a point on the edge (point a works)
+        const distToPoint = b1.position.clone().sub(a);
+        // dot product this vector with the normal vector to get distance to the edge vector
+        const distToEdge = distToPoint.dotProduct(normal);
+
+        // if the distance to the edge is greater than any other saved edge, store it
+        // this is to maximize heuristic elimination
+        if (distToEdge > highestEdgeDot) {
+            highestEdgeDot = distToEdge;
+            bestEdge = i;
+        }
+    }
+
+    // if the distance to an edge is greater than the radius of the ball, we can guarantee no collision
+    if (highestEdgeDot > b1.radius) return;
+
+    // take the best edge
+    const a = vertices[bestEdge];
+    const b = vertices[bestEdge === vertices.length - 1 ? 0 : (bestEdge + 1)];
+    const edge = b.clone().sub(a);
+
+    // if the greatest dot product is negative, the circle is inside the polygon 
+    if (highestEdgeDot < 0) {
+        const faceNormal = new Vector2(edge.y, -edge.x).normalize();
+
+        const overlap = b1.radius - highestEdgeDot;
+
+        resolveImpulse(b1, b2, faceNormal, overlap);
+        return;
+    }
+    
+    // find the distance to the edge vector, and divide by the magnitude squared of the edge (vector projection)
+    let t = b1.position.clone().sub(a).dotProduct(edge) / edge.dotProduct(edge);
+
+    // clamp t so it always lies on the actual edge, and not possibly off the edge but in the same direction
+    t = clamp(t, 0, 1);
+
+    // start at a and move down the edge a distance t
+    // start + direction * distance = our point
+    const closestPoint = a.clone().add(edge.clone().mult(t));
+
+    // find the distance between the ball and the real point
+    let dir = b1.position.clone().sub(closestPoint);
+    const dist = dir.magnitude();
+    // if it's greater than the radius, no collision
+    if (dist > b1.radius) return;
+
+    // find how much the ball overlaps into the polygon
+    const overlap = b1.radius - dist;
+
+    // get the normal vector
+    if (dist > 0) {
+        dir.normalize();
+    } else {
+        dir = new Vector2(0, -1);
+    }
+
+    resolveImpulse(b1, b2, dir, overlap);
 
 }
 
 function polygonPolygon(b1, b2) {
+    // the two sets of vertices
+    const verts1 = b1.getWorldVertices();
+    const verts2 = b2.getWorldVertices();
+
+    let smallestOverlap = Infinity;
+    let smallestAxis = null;
+
+    // loop through the first set of vertices
+    for (let i = 0; i < verts1.length; i++) {
+        // get 2 points on an edge AB
+        const a = verts1[i];
+        const b = verts1[i === verts1.length - 1 ? 0 : i + 1];
+
+        // find the normal vector of the edge
+        const edge = b.clone().sub(a);
+        const axis = new Vector2(edge.y, -edge.x).normalize();
+
+        // project both set of vertices onto our edge to find maxes and mins
+        const proj1 = projectVertices(verts1, axis);
+        const proj2 = projectVertices(verts2, axis);
+
+        const overlap = getOverlap(proj1, proj2); // find if the two edges overlap
+
+        // no overlap found
+        if (overlap < 0) return;
+        // update the smallest overlap (we want to correct only as minimally as possible)
+        if (overlap < smallestOverlap) {
+            smallestOverlap = overlap;
+            smallestAxis = axis;
+        }
+    }
+
+    // loop through the other polygon's vertices
+    for (let i = 0; i < verts2.length; i++) {
+        // get 2 points on an edge AB
+        const a = verts2[i];
+        const b = verts2[i === verts2.length - 1 ? 0 : i + 1];
+
+        // find the normal vector of the edge
+        const edge = b.clone().sub(a);
+        const axis = new Vector2(edge.y, -edge.x).normalize();
+
+        // project both set of vertices onto our edge to find maxes and mins
+        const proj1 = projectVertices(verts1, axis);
+        const proj2 = projectVertices(verts2, axis);
+
+        const overlap = getOverlap(proj1, proj2); // find if the two edges overlap
+
+        // no overlap found
+        if (overlap <= 0) return;
+        // update the smallest overlap (we want to correct only as minimally as possible)
+        if (overlap < smallestOverlap) {
+            smallestOverlap = overlap;
+            smallestAxis = axis;
+        }
+    }
+
+    // find the direction between the two polygons' centers
+    const centerDir = b1.position.clone().sub(b2.position);
+    
+    // if the dot product is less than 0, then flip the axis (resolveImpulse needs a normal from b2 to b1)
+    if (smallestAxis.dotProduct(centerDir) < 0) {
+        smallestAxis.mult(-1);
+    }
+
+    resolveImpulse(b1, b2, smallestAxis, smallestOverlap);
 
 }
 
+// Helper function to loop through an array of vertices and find the min and max dot products of the vertex to an axis
+function projectVertices(vertices, axis) {
+    let min = Infinity;
+    let max = -Infinity;
 
+    for (const vertex of vertices) {
+        const projection = vertex.dotProduct(axis);
 
+        if (projection < min) {
+            min = projection;
+        }
+
+        if (projection > max) {
+            max = projection;
+        }
+    }
+
+    return { min, max };
+}
+
+// generic impulse for rigidbodies
+function resolveImpulse(b1, b2, normal, overlap) {
+    // inverse masses, needed a few times 
+    const invMass1 = getInvMass(b1);
+    const invMass2 = getInvMass(b2);
+
+    // they overlap, push them apart before applying impulses
+    if (overlap > 0) {
+
+        // slop damping
+        // percent correction each iteration
+        const percent = 0.9;
+        // overlap amount to ignore 
+        const slop = 0.03;
+
+        const correction = Math.max(overlap - slop, 0) * percent;
+
+        // balls with more mass in a collision move less
+        const totalMass = invMass1 + invMass2;
+
+        b1.position.add(normal.clone().mult(correction * invMass1 / totalMass));
+        b2.position.sub(normal.clone().mult(correction * invMass2 / totalMass));
+    }
+
+    // find relative velocity between b1 and b2
+    const relativeVelocity = b1.velocity.clone().sub(b2.velocity);
+
+    // take dot product
+    const velAlongNormal = relativeVelocity.dotProduct(normal);
+
+    // if the dot product (velocity along axis of collision) is greater than 0, skip
+    if (velAlongNormal > 0) return;
+
+    // it's more physically accurate to take the minimum of the two bounciness values instead of averaging the values
+    // let collisionBounciness = (b1.bounciness + b2.bounciness) / 2;
+    let collisionBounciness = Math.min(b1.bounciness, b2.bounciness);
+
+    // if the collision is tiny, don't even bounce at all (avoid microbounces)
+    if (Math.abs(velAlongNormal) < REST_THRESHOLD) {
+        collisionBounciness = 0;
+
+    } else {
+        b1.wake();
+        b2.wake();
+    }
+
+    // standard 2d engine method for collisions as opposed to 1D elastic collision method
+    const j =
+        -(1 + collisionBounciness) * velAlongNormal /
+        (invMass1 + invMass2);
+
+    const impulse = normal.mult(j);
+
+    b1.velocity.add(
+        impulse.clone().mult(invMass1)
+    );
+
+    b2.velocity.sub(
+        impulse.mult(invMass2)
+    );
+}
+
+// helper function which returns the overlap between two intervals
+// by subtracting the smaller endpoint with the greater startpoint
+function getOverlap(b1, b2) {
+    return Math.min(b1.max, b2.max) - Math.max(b1.min, b2.min);
+}
 
 // construct the grid for splicing
 function buildGrid() {
@@ -307,23 +480,35 @@ function getNearbyBalls(ball, grid) {
     return near;
 }
 
-// function that pushes balls outwards from x and y coordinates
-function pushBalls(x, y, power) {
-    for (const ball of objects) {
-        const dir = ball.position.clone().sub(new Vector2(x, y));
-        const dist = dir.magnitude();
 
-        // 250 is the falloff radius, 0 to avoid dividing by 0
-        if (dist === 0 || dist > 250) continue;
+function updateDrag(dt) {
+    if (!isHolding || !draggedBall) return;
+    // value of the mouse, clamped in the edges of the screen
+    const target = new Vector2(
+        clamp(mouseX, draggedBall.radius, canvas.width - draggedBall.radius),
+        clamp(mouseY, draggedBall.radius, canvas.height - draggedBall.radius)
+    );
 
-        dir.normalize();
-
-        // power shrinks linearly with distance
-        const strength = power / dist;
-        ball.velocity.add(dir.mult(strength));
-        // wake a sleeping ball up
-        ball.wake();
+    if (dt > 0) {
+        // velocity = change in position over time
+        const instantVelocity = target.clone().sub(draggedBall.position).mult(1 / dt);
+        // multiplied by 0.4 so a small touch doesn't send the balls flying
+        draggedBall.velocity = draggedBall.velocity.clone().mult(0.4).add(instantVelocity.mult(0.4));
     }
+
+    // move the dragged ball to the mouse position
+    draggedBall.position.x = target.x;
+    draggedBall.position.y = target.y;
+}
+
+// Helper function to clamp the first parameter to a min and max value
+function clamp(n, min, max) {
+    if (n < min) {
+        return min;
+    } else if (n > max) {
+        return max;
+    }
+    return n;
 }
 
 // Helper function to get a unique int key for any 2 cells
@@ -365,12 +550,10 @@ function spawnPolygon(posVector, vertices, color, mass, bounciness, friction) {
 
 }
 
-
-// function to re-call pushBalls while the user is holding
-function constantlyPushBalls(power) {
-    if (!isHolding) return;
-    pushBalls(mouseX, mouseY, power);
-    requestAnimationFrame(() => constantlyPushBalls(power));
+// Helper function to return the inverse mass of an object
+// dragged objects act as infinite pass
+function getInvMass(obj) {
+    return obj.isBeingDragged ? 0 : 1 / obj.mass;
 }
 
 // Helper function to get a random number in a range
@@ -485,11 +668,11 @@ function benchmark(count, frames) {
         const y = randomRange(0, canvas.height);
         const posVector = new Vector2(x, y);
 
-        const radius = randomRange(5, 40);
+        const radius = Math.round(randomRange(8, 40));
         const color = colors[Math.floor(randomRange(0, colors.length))];
-        const mass = randomRange(1, 100);
-        const bounciness = randomRange(0, 0.99);
-        const friction = randomRange(0, 10);
+        const mass = Math.round(randomRange(1, 100));
+        const bounciness = Math.round(randomRange(0, 0.99));
+        const friction = Math.round(randomRange(0, 10));
 
         spawnBall(posVector, radius, color, mass, bounciness, friction);
 
@@ -586,18 +769,33 @@ canvas.addEventListener("click", (event) => {
 // hold tracking for the push mode
 canvas.addEventListener("mousedown", (event) => {
     if (mode === 2) {
-        isHolding = true;
         // get mouse position
         const rect = canvas.getBoundingClientRect();
 
         mouseX = event.clientX - rect.left;
         mouseY = event.clientY - rect.top;
-        const power = 10000;
+        // drag balls
+        for (let i = 0; i < objects.length; i++) {
+            const obj = objects[i];
+            const dist = obj.position.clone().sub(new Vector2(mouseX, mouseY)).magnitude();
+            if (dist <= obj.radius) {
+                draggedBall = obj;
+                draggedBall.isBeingDragged = true;
+                draggedBall.wake(); // wake if sleeping
+                isHolding = true;
+                break;
+            }
+        }
+        // const power = 10000;
 
-        constantlyPushBalls(power);
+        // constantlyPushBalls(power);
     }
 });
 document.addEventListener("mouseup", () => {
+    if (draggedBall) {
+        draggedBall.isBeingDragged = false;
+        draggedBall = null;
+    }
     isHolding = false;
 
 });
@@ -613,7 +811,7 @@ document.addEventListener("mousemove", (event) => {
     mouseY = event.clientY - rect.top;
     if (mode === 3) {
         for (const object of objects) {
-            const dist = Math.sqrt(Math.pow(object.position.x - mouseX, 2) + (Math.pow(object.position.y - mouseY, 2)));
+            const dist = Math.sqrt((object.position.x - mouseX) ** 2 + (object.position.y - mouseY) ** 2);
             // mouse is overlapping with an object
             if (dist <= object.radius) {
                 updateInfoPanel(object);
@@ -663,13 +861,16 @@ document.addEventListener("keydown", (event) => {
     if (event.key === "e") {
         // plop sound when a ball is spawned
         playSpawnSound();
+        const posVector = new Vector2(mouseX, mouseY);
+        // temporary -- size derivated from radius parameter
+        const size = parseFloat(radiusSlider.value);
+        const vertices = makeSquareVertices(size * 2);
+        const color = colors[Math.floor(randomRange(0, colors.length))]
+        const mass = parseFloat(massSlider.value);
+        const bounciness = parseFloat(bouncinessSlider.value);
+        const friction = parseFloat(frictionSlider.value);
 
-        const x = randomRange(20, canvas.width - 20);
-        const y = canvas.height / 3;
-        const posVector = new Vector2(x, y);
-        const vertices = makeSquareVertices(45);
-
-        spawnPolygon(posVector, vertices, "red", 10, 0, 0);
+        spawnPolygon(posVector, vertices, color, mass, bounciness, friction);
     }
 
 });
@@ -756,6 +957,7 @@ loop();
 
 
 /* TODO:
+ add AABB eliminations before SAT, cache axes for polygon-polygon, add ROTATION, SQUARE BOUNCINESS and FRICTION
  add ball-to-ball friction, more sound effects
  OPTIMIZATIONS (drawImg ball coloring optimization, finish sleeping bodies)
  */

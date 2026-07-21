@@ -1,28 +1,15 @@
 import { gravity, circleDragCoefficient, dragK, gK, REST_THRESHOLD } from "./globals.js";
 import { Vector2 } from "./vector2.js";
+import { RigidBody } from "./rigidbody.js";
 
 const REST_TIME = 2;
 
-export class Ball {
+export class Ball extends RigidBody {
     
-    isAsleep = false;
-    asleepTimer = 0;
-    constructor(position, radius, color, mass, bounciness, friction) {
+   constructor(position, radius, color, mass, bounciness, friction) {
+        super(position, color, mass, bounciness, friction);
         this.type = "circle";
-        this.force = new Vector2(0, 0);
-        this.velocity = new Vector2(0, 0);
-        this.acceleration = new Vector2(0, 0);
-        this.position = position;
-        this.lastPosition = position.clone();
-
         this.radius = radius;
-        this.mass = mass
-        this.bounciness = bounciness;
-        this.friction = friction;
-
-        this.color = color;
-
-
     }
 
     draw(ctx) {
@@ -49,57 +36,7 @@ export class Ball {
 
     }
 
-    update(dt, airDensity) {
-        // console.log(this.velocity.magnitude());
-        if (this.isAsleep) return;
 
-        let speed = this.velocity.magnitude();
-        // reset the forces to 0
-        this.force.mult(0);
-
-        // apply gravity force F=ma
-        this.force.sub(gravity.clone().mult(this.mass * gK));
-
-        // apply air resistence REWORK LATER
-        if (speed > 0) {
-            // Fd = (1/2)(p)(C)(PI)(r^2)(|v|)(v)
-            // dragK is an arbitrary constant to keep airDensity being 1.225
-            const dragForce = this.velocity.clone().mult(0.5 * airDensity * circleDragCoefficient * Math.PI * (this.radius ** 2) * speed * dragK);
-            // larger objects experience more drag, and heavier ones experience less
-            // let dragStrength = drag * this.radius * 0.2 * (1 / this.mass);
-
-            // this.force.add(this.velocity.clone().mult(dragStrength));
-            this.force.add(dragForce);
-        }
-
-        // convert force to acceleration a = F/ma
-        this.acceleration = this.force.clone().mult(1 / this.mass);
-
-        // convert force to velocity
-        this.velocity.sub(this.acceleration.clone().mult(dt));
-
-        // convert velocity into position
-        this.position.add(this.velocity.clone().mult(dt));
-
-    }
-
-    // function to wake a sleeping ball up
-    wake() {
-        this.asleepTimer = 0;
-        this.isAsleep = false;
-    }
-
-    bounce(dir) {
-        // normalize direction vector
-        const normal = dir.normalize();
-
-        // compute the dot product of the x and y vectors
-        const vDotN = this.velocity.dotProduct(normal);
-
-        // apply velocity change
-        // vVelocity -= vNormal * v dot n * (1 + bounciness)
-        this.velocity.sub(normal.clone().mult(vDotN * (1 + this.bounciness)));
-    }
 
     // check for clipping out of the screen
     checkBounds(canvas, dt) {
@@ -181,9 +118,14 @@ export class Ball {
         // }
     }
 
-    updateLastPosition() {
-        this.lastPosition.x = this.position.x;
-        this.lastPosition.y = this.position.y;
+    handleDrag(airDensity) {
+        const speed = this.velocity.magnitude();
+        
+        if (speed > 0) {
+            const dragForce = this.velocity.clone().mult(
+                0.5 * airDensity * circleDragCoefficient * Math.PI * (this.radius ** 2) * speed * dragK
+            );
+            this.force.add(dragForce);
+        }
     }
-
 }
