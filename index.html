@@ -17,11 +17,22 @@
         <div class="hud-title">PHYSICS ENGINE <span class="hud-title-sub">// Jake Jacobi</span></div>
         <div class="hud-row"><span class="hud-key">GRAVITY </span><span class="hud-val" id="gravityDisplay">9.81</span></div>
         <div class="hud-row"><span class="hud-key">FPS </span><span class="hud-val" id="fpsValue">60</span></div>
+        <div class="hud-row"><span class="hud-key">OBJECTS </span><span class="hud-val" id="objectsValue">0</span></div>
+        </div>
+    <div id="infoBox">
+        <div class="diagonal-line" id = "diagonal-line"></div>
+        <div class="hud-title">INFO <span class="hud-title-sub" id = "colorInfoDisplay">// Blue</span></div>
+        <div class="hud-row"><span class="hud-key">RADIUS </span><span class="hud-val" id="infoRadiusDisplay">25</span></div>
+        <div class="hud-row"><span class="hud-key">MASS </span><span class="hud-val" id="infoMassDisplay">25</span></div>
+        <div class="hud-row"><span class="hud-key">BOUNCINESS </span><span class="hud-val" id="infoBouncinessDisplay">0.65</span></div>
+        <div class="hud-row"><span class="hud-key">FRICTION </span><span class="hud-val" id="infoFrictionDisplay">2</span></div>
+
         </div>
     <div id="button-overlay">
         <button id="resetButton"><span aria-hidden="true">&#8635;</span> Reset</button>    </div>
 
     <div id="controls">
+        <!-- per-ball modifiers -->
         <div class="control-group">
         <label for="radiusSlider">Radius <span class="unit">px</span><span class="value-readout" id="radiusValue">25</span></label>
             <input type="range" id="radiusSlider" min="8" max="60" value="25">
@@ -31,16 +42,17 @@
             <input type="range" id="bouncinessSlider" min="0" max="0.99" step="0.01" value="0.65">
         </div>
         <div class="control-group">
-            <label for="airResistanceSlider">Air Resistance <span class="unit">ρ</span><span class="value-readout" id="airResistanceValue">1.225</span></label>
-            <input type="range" id="airResistanceSlider" min="0" max="5" step="0.02" value="1.22">
-        </div>
-        <div class="control-group">
             <label for="frictionSlider">Friction <span class="unit">μ</span><span class="value-readout" id="frictionValue">2</span></label>
             <input type="range" id="frictionSlider" min="0" max="10" step="1" value="2">
         </div>
         <div class="control-group">
             <label for="massSlider">Mass <span class="unit">kg</span><span class="value-readout" id="massValue">25</span></label>
             <input type="range" id="massSlider" min="1" max="100" value="25">
+        </div>
+        <!-- Global modifiers -->
+        <div class="control-group global-group" >
+            <label for="airResistanceSlider">Air Resistance <span class="unit">ρ</span><span class="value-readout" id="airResistanceValue">1.225</span></label>
+            <input type="range" id="airResistanceSlider" min="0" max="5" step="0.02" value="1.22">
         </div>
         <div class="control-group">
             <label for="timeScaleSlider">Time Scale <span class="unit">×</span><span class="value-readout" id="timeScaleValue">1</span></label>
@@ -49,8 +61,12 @@
         </div>
         <div class="control-group">
             <label>Mode:</label>
-            <button id="spawnMode">Spawn</button>
-            <button id="pushMode">Push</button>
+            <div class="mode-buttons">
+                <button id="spawnMode">Spawn</button>
+                <button id="pushMode">Push</button>
+                <button id="inspectMode">Inspect</button>
+            </div>
+
 
         </div>
     </div>

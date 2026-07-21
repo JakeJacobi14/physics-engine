@@ -2,11 +2,19 @@
 :root {
     --bg-void: #0a1220;
     --accent: hsl(24, 100%, 62%);
+    --accent2:rgb(104, 169, 255);
     --ink: #a8a8a8;
-    --bg-panel: rgba(24, 38, 67, 0.6);
+    --bg-panel: rgba(18, 29, 51, 0.6);
     --grid-line: rgba(88, 130, 203, 0.15);
     --grid-line-strong: rgba(88, 130, 203, 0.35);
     --ink-dim: #7c93b3;
+}
+/* make the page not highlightable */
+html, body {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
 }
 
 body {
@@ -23,7 +31,7 @@ canvas {
     width: 100%;
     height: 80vh;
     background-color: var(--bg-void);
-    background-image: 
+    background-image:
         /* big stripes */
         repeating-linear-gradient(90deg, var(--grid-line-strong) 0, var(--grid-line-strong) 1px, transparent 1px, transparent 160px),
         repeating-linear-gradient(0deg, var(--grid-line-strong) 0, var(--grid-line-strong) 1px, transparent 1px, transparent 160px),
@@ -33,7 +41,7 @@ canvas {
 
 }
 
-/* Styles for the control bar */
+/* styles for the control bar */
 #controls {
     height: 17vh;
     background-color: var(--bg-panel);
@@ -73,6 +81,7 @@ canvas {
     padding: 3px 8px;
     cursor: pointer;
 }
+
 #resetTimeScale:hover {
     border-color: var(--accent);
     color: var(--accent);
@@ -80,7 +89,7 @@ canvas {
 
 
 
-/* The text in the top left corner */
+/* the text in the top left corner */
 #overlay {
     position: absolute;
     top: 10px;
@@ -106,6 +115,7 @@ canvas {
     border-top: 2px solid var(--accent);
     border-left: 2px solid var(--accent);
 }
+
 #overlay::after {
     content: "";
     position: absolute;
@@ -115,6 +125,74 @@ canvas {
     height: 10px;
     border-right: 2px solid var(--accent);
     border-bottom: 2px solid var(--accent);
+}
+
+/* info box for inspect mode */
+#infoBox {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 170px;
+    color: var(--ink);
+    font-size: 14px;
+    background: var(--bg-panel);
+    padding: 8px 12px;
+    pointer-events: none;
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    
+}
+/* blue corners to the info box */
+#infoBox::before {
+    content: "";
+    position: absolute;
+    bottom: -1px;
+    left: -1px;
+    width: 10px;
+    height: 10px;
+    border-bottom: 2px solid var(--accent2);
+    border-left: 2px solid var(--accent2);
+    
+}
+#infoBox::after {
+    content: "";
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    width: 10px;
+    height: 10px;
+    border-top: 2px solid var(--accent2);
+    border-right: 2px solid var(--accent2);
+    
+}
+#infoBox.flipped::before {
+    bottom: auto;
+    left: -1px;
+    top: -1px;
+    border-bottom: none;
+    border-top: 2px solid var(--accent2);
+}
+#infoBox.flipped::after {
+    top: auto;
+    right: -1px;
+    bottom: -1px;
+    border-top: none;
+    border-bottom: 2px solid var(--accent2);
+}
+
+/* diagonal line leading to the info box */
+.diagonal-line {
+    content: "";
+    position: absolute;
+    bottom: -3px;
+    left: 0px;
+    width: 80px;
+    height: 0;
+    border-top: 2px solid var(--accent2);
+    transform: rotate(150deg);
+    transform-origin: top left; 
+
 }
 
 /* The button in the top right corner */
@@ -127,18 +205,22 @@ canvas {
 
 }
 
-/* Style for the settings sliders and labels */
+/* style for the settings sliders and labels */
 .control-group {
     display: flex;
     flex-direction: column;
     justify-content: center;
     background: var(--bg-panel);
     border: 1px solid var(--ink-dim);
-    padding: 8px 12px;
+    padding: 8px 18px;
     color: var(--ink);
     font-size: 14px;
 }
 
+/* gap between per-ball properties and global ones */
+.global-group {
+    margin-left: 32px;
+}
 
 /* highlight the active mode button */
 #controls button.active {
@@ -146,7 +228,10 @@ canvas {
     color: rgb(36, 36, 36);
     font-weight: bold;
 }
-#spawnMode, #pushMode {
+
+#spawnMode,
+#pushMode,
+#inspectMode {
     font-size: 11px;
     font-weight: 700;
     color: var(--ink-dim);
@@ -156,21 +241,30 @@ canvas {
     cursor: pointer;
 }
 
+/* remove the double line between the 3 buttons */
+/* middle button has no side borders */
+#pushMode {
+    border-right: none;
+    border-left: none;
+}
 
-/* slider styling — base element reset */
+/* make the buttons side by side instead of vertical */
+.mode-buttons {
+    display: flex;
+    gap: 0px;
+}
+
 input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
     height: 18px;
     background-color: transparent;
-    background-image: repeating-linear-gradient(
-        90deg,
-        var(--ink-dim) 0,
-        var(--ink-dim) 1px,
-        transparent 1px,
-        transparent 12.5%
-    );
+    background-image: repeating-linear-gradient(90deg,
+            var(--ink-dim) 0,
+            var(--ink-dim) 1px,
+            transparent 1px,
+            transparent 12.5%);
     background-position: center;
     background-size: 100% 6px;
     background-repeat: no-repeat;
@@ -259,6 +353,6 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .hud-val {
-    color: var(--accent);
+    color: var(--accent2);
     font-weight: 500;
 }

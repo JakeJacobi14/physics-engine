@@ -5,7 +5,8 @@ import { Vector2 } from "./vector2.js";
 import {
     radiusSlider, radiusValueDisplay, bouncinessValueDisplay, bouncinessSlider, airResistanceSlider, airResistanceValueDisplay,
     massSlider, massValueDisplay, frictionSlider, frictionValueDisplay, timeScaleSlider, timeScaleDisplay, resetTimeScaleButton,
-    fpsDisplay, resetButton, spawnModeButton, pushModeButton
+    fpsDisplay, objectsDisplay, resetButton, spawnModeButton, pushModeButton, inspectModeButton, infoRadiusDisplay, infoMassDisplay,
+    infoBouncinessDisplay, infoFrictionDisplay, infoBox, colorInfoDisplay, diagonalLine
 } from "./ui.js";
 
 const canvas = document.getElementById("canvas");
@@ -18,7 +19,7 @@ let mode = 1; // 1 for spawn, 2 for push
 
 let lastTime = performance.now();
 
-let balls = [];
+let objects = [];
 
 let fpsTimer = 0;
 
@@ -40,9 +41,11 @@ let isHolding = false;
 let mouseX = 0;
 let mouseY = 0;
 
+let currentInfoObject;
+
 
 function update(dt) {
-    for (const ball of balls) {
+    for (const ball of objects) {
         ball.update(dt, airResistance);
     }
 }
@@ -50,7 +53,7 @@ function update(dt) {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    for (const ball of balls) {
+    for (const ball of objects) {
         ball.draw(ctx);
     }
 
@@ -60,22 +63,23 @@ function loop() {
     // find deltaTime
     let currentTime = performance.now();
     let actualDt = (currentTime - lastTime) / 1000;
+    // update the fps display every quarter second
+    if (fpsTimer >= 0.25) {
+        fpsDisplay.textContent = Math.round(1 / actualDt);
+        fpsTimer = 0;
+    }
+    fpsTimer += actualDt;
     // if the program freezes or is tabbed out, don't create a massive deltaTime
     if (actualDt > 0.1) {
         actualDt = 0.016;
     }
     const dt = actualDt * timeScale;
 
-    for (const ball of balls) {
+    for (const ball of objects) {
         ball.updateLastPosition();
     }
 
-    // update the fps display every quarter second
-    if (fpsTimer >= 0.25) {
-        fpsDisplay.textContent = Math.round(1 / actualDt) + " | Objects: " + balls.length;
-        fpsTimer = 0;
-    }
-    fpsTimer += actualDt;
+    
 
     // substeps, which reduce time in between calculations but do fewer corrective calculations
     let subDt = dt / substeps;
@@ -86,7 +90,7 @@ function loop() {
         resolveCollisons(dt);
     }
 
-    for (const ball of balls) {
+    for (const ball of objects) {
         ball.updateBallSleep(dt);
     }
 
@@ -105,14 +109,14 @@ function resolveCollisons(dt) {
     const grid = buildGrid();
     // calculate the physics k times
     for (let k = 0; k < iterations; k++) {
-        for (let i = 0; i < balls.length; i++) {
-            const b1 = balls[i];
+        for (let i = 0; i < objects.length; i++) {
+            const b1 = objects[i];
             // check for radius size, for a hybrid spatial hashing
             // big balls check collision pairs manually, small ones use hashing
             if (b1.radius >= BIG_RADIUS) {
                 // loop through every ball
-                for (let j = 0; j < balls.length; j++) {
-                    const b2 = balls[j];
+                for (let j = 0; j < objects.length; j++) {
+                    const b2 = objects[j];
                     // if the two are the same ball, skip the iteration
                     if (b1 === b2) continue;
                     // if the other ball is also big, then only check one id pair to avoid duplicating the collision
@@ -139,7 +143,7 @@ function resolveCollisons(dt) {
             }
 
             // clamp every ball to the bounds of the screen
-            balls[i].checkBounds(canvas, dt);
+            objects[i].checkBounds(canvas, dt);
 
         }
     }
@@ -235,6 +239,17 @@ function circleCircle(b1, b2) {
     }
 }
 
+function circlePolygon(b1, b2) {
+
+}
+
+function polygonPolygon(b1, b2) {
+
+}
+
+
+
+
 // construct the grid for splicing
 function buildGrid() {
     // the cell size must be as big as the biggest ball
@@ -246,7 +261,7 @@ function buildGrid() {
      */
     const grid = new Map();
     // loop through all the balls, create a key of which cell they would be in for X and Y
-    for (const ball of balls) {
+    for (const ball of objects) {
         if (ball.radius >= BIG_RADIUS) continue;
         const cellX = Math.floor(ball.position.x / cellSize);
         const cellY = Math.floor(ball.position.y / cellSize);
@@ -294,12 +309,12 @@ function getNearbyBalls(ball, grid) {
 
 // function that pushes balls outwards from x and y coordinates
 function pushBalls(x, y, power) {
-    for (const ball of balls) {
+    for (const ball of objects) {
         const dir = ball.position.clone().sub(new Vector2(x, y));
         const dist = dir.magnitude();
 
         // 250 is the falloff radius, 0 to avoid dividing by 0
-        if (dist == 0 || dist > 250) continue;
+        if (dist === 0 || dist > 250) continue;
 
         dir.normalize();
 
@@ -333,17 +348,20 @@ function spawnBall(posVector, radius, color, mass, bounciness, friction) {
     // increment ball id
     ball.id = nextBallId++;
     // add the ball to the array of balls in the scene
-    balls.push(ball);
+    objects.push(ball);
     // update maxSmallRadius (largest radius below BIG_RADIUS)
     if (radius < BIG_RADIUS) {
         maxSmallRadius = Math.max(maxSmallRadius, radius);
     }
+    objectsDisplay.textContent = objects.length;
 }
 
 function spawnPolygon(posVector, vertices, color, mass, bounciness, friction) {
     const polygon = new Polygon(posVector, vertices, color, mass, bounciness, friction);
     polygon.id = nextBallId++;
-    balls.push(polygon);
+    objects.push(polygon);
+    objectsDisplay.textContent = objects.length;
+
 
 }
 
@@ -362,7 +380,7 @@ function randomRange(min, max) {
 
 // Helper function to reset the scene
 function resetScene() {
-    balls = [];
+    objects = [];
     nextBallId = 0; // not needed but simple
 
     radiusSlider.value = 25;
@@ -388,6 +406,17 @@ function resetScene() {
     mode = 1; // reset to spawn mode
     spawnModeButton.classList.add("active");
     pushModeButton.classList.remove("active");
+    inspectModeButton.classList.remove("active");
+
+    objectsDisplay.textContent = objects.length;
+
+    infoRadiusDisplay.textContent = "25";
+    infoMassDisplay.textContent = "25";
+    infoBouncinessDisplay.textContent = "0.65";
+    infoFrictionDisplay.textContent = "2";
+
+    updateInfoPanel(null);
+
 }
 
 // Resizes the canvas when the window size is changed
@@ -448,6 +477,7 @@ function playSliderTick() {
     osc.start();
     osc.stop(audioCtx.currentTime + 0.015);
 }
+
 function benchmark(count, frames) {
     resetScene();
     for (let i = 0; i < count; i++) {
@@ -479,6 +509,43 @@ function benchmark(count, frames) {
 
 }
 
+function updateInfoPanel(object) {
+
+    if (object !== currentInfoObject) {
+        currentInfoObject = object;
+        if (object === null) {
+            infoBox.style.display = "none";
+            return;
+        }
+        infoRadiusDisplay.textContent = object.radius;
+        infoMassDisplay.textContent = object.mass;
+        infoBouncinessDisplay.textContent = object.bounciness;
+        infoFrictionDisplay.textContent = object.friction;
+        colorInfoDisplay.textContent = "// " + object.color;
+        
+        infoBox.style.display = "flex";
+
+        playSliderTick();
+    }
+
+    // update the info box position for edges of the screen <-- very messy code (ᵕ—ᴗ—)
+    const updateX = mouseX < 1200;
+    const updateY = mouseY > 200;
+    infoBox.style.left = updateX ? `${mouseX + 72}px` : `${mouseX - 72 - infoBox.offsetWidth}px`;
+    infoBox.style.top = updateY ? `${mouseY - 170}px` : `${mouseY + 170 - infoBox.offsetHeight}px`;
+    // update the line leading to the box
+    let moveX = updateX ? 0 : infoBox.offsetWidth + 70;
+    let moveY = updateX ? 0 : 40;
+    moveY += updateY ? 0 : -infoBox.offsetHeight - (updateX ? 0 : 80);
+    let rotationChange = updateX ? 150 : - 150;
+    rotationChange += updateY ? 0 : updateX ? 60 : -60;
+    diagonalLine.style.transform = `translate(${moveX}px, ${moveY}px) rotate(${rotationChange}deg)`;
+    // update the corners if one or the other is true, but not both
+    infoBox.classList.toggle("flipped", updateX !== updateY);
+
+   
+}
+
 function makeSquareVertices(size) {
     const k = size / 2;
     return [
@@ -486,10 +553,6 @@ function makeSquareVertices(size) {
         new Vector2(k, k), new Vector2(-k, k)
     ];
 }
-
-
-
-
 
 
 // summon one ball
@@ -522,14 +585,13 @@ canvas.addEventListener("click", (event) => {
 
 // hold tracking for the push mode
 canvas.addEventListener("mousedown", (event) => {
-    if (mode == 2) {
+    if (mode === 2) {
         isHolding = true;
         // get mouse position
         const rect = canvas.getBoundingClientRect();
 
         mouseX = event.clientX - rect.left;
         mouseY = event.clientY - rect.top;
-
         const power = 10000;
 
         constantlyPushBalls(power);
@@ -549,7 +611,17 @@ document.addEventListener("mousemove", (event) => {
 
     mouseX = event.clientX - rect.left;
     mouseY = event.clientY - rect.top;
-
+    if (mode === 3) {
+        for (const object of objects) {
+            const dist = Math.sqrt(Math.pow(object.position.x - mouseX, 2) + (Math.pow(object.position.y - mouseY, 2)));
+            // mouse is overlapping with an object
+            if (dist <= object.radius) {
+                updateInfoPanel(object);
+                return;
+            }
+        }
+        updateInfoPanel(null);
+    }
 });
 
 // R to reset canvas
@@ -652,6 +724,7 @@ resetButton.addEventListener("click", () => {
 spawnModeButton.addEventListener("click", () => {
     mode = 1;
     spawnModeButton.classList.add("active");
+    inspectModeButton.classList.remove("active");
     pushModeButton.classList.remove("active");
     playClickSound();
 
@@ -659,11 +732,19 @@ spawnModeButton.addEventListener("click", () => {
 pushModeButton.addEventListener("click", () => {
     mode = 2;
     spawnModeButton.classList.remove("active");
+    inspectModeButton.classList.remove("active");
     pushModeButton.classList.add("active");
     playClickSound();
 
 });
+inspectModeButton.addEventListener("click", () => {
+    mode = 3;
+    spawnModeButton.classList.remove("active");
+    pushModeButton.classList.remove("active");
+    inspectModeButton.classList.add("active");
+    playClickSound();
 
+});
 
 // listener to resize canvas
 window.addEventListener("resize", resizeCanvas)

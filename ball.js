@@ -101,6 +101,7 @@ export class Ball {
         this.velocity.sub(normal.clone().mult(vDotN * (1 + this.bounciness)));
     }
 
+    // check for clipping out of the screen
     checkBounds(canvas, dt) {
         const ySpeed = Math.abs(this.velocity.y);
         // check for ground + ceiling and bounce
@@ -152,6 +153,7 @@ export class Ball {
         }
     }
 
+    // sleeping bodies
     updateBallSleep(dt) {
 
         // const dx = this.position.x - this.lastPosition.x;

@@ -91,6 +91,7 @@ export class Polygon {
 
     }
 
+    // convert local vertex position to world position
     getWorldVertices() {
         return [
             this.position.clone().add(this.vertices[0]), this.position.clone().add(this.vertices[1]),
