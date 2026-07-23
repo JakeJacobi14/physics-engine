@@ -21,15 +21,23 @@
         </div>
     <div id="infoBox">
         <div class="diagonal-line" id = "diagonal-line"></div>
-        <div class="hud-title">INFO <span class="hud-title-sub" id = "colorInfoDisplay">// Blue</span></div>
-        <div class="hud-row"><span class="hud-key">RADIUS </span><span class="hud-val" id="infoRadiusDisplay">25</span></div>
+        <div class="hud-title">
+            <span id="objectTypeDisplay">CIRCLE </span><span class="hud-title-sub" id = "colorInfoDisplay">// Blue</span>
+        </div>
+        <div class="hud-row"><span class="hud-key">SIZE </span><span class="hud-val" id="infoRadiusDisplay">25</span></div>
         <div class="hud-row"><span class="hud-key">MASS </span><span class="hud-val" id="infoMassDisplay">25</span></div>
         <div class="hud-row"><span class="hud-key">BOUNCINESS </span><span class="hud-val" id="infoBouncinessDisplay">0.65</span></div>
         <div class="hud-row"><span class="hud-key">FRICTION </span><span class="hud-val" id="infoFrictionDisplay">2</span></div>
 
         </div>
     <div id="button-overlay">
-        <button id="resetButton"><span aria-hidden="true">&#8635;</span> Reset</button>    </div>
+        <button id="resetButton"><span aria-hidden="true">&#8635;</span> Reset</button>    
+
+        <div class="mode-buttons" id="spawn-modes">
+            <button id="circleButton"><span aria-hidden="true">&#9679;</span> Circle</button>    
+            <button id="squareButton"><span aria-hidden="true">&#9632;</span> Square</button>    
+        </div>
+    </div>
 
     <div id="controls">
         <!-- per-ball modifiers -->
@@ -66,8 +74,6 @@
                 <button id="pushMode">DRAG</button>
                 <button id="inspectMode">INSPECT</button>
             </div>
-
-
         </div>
     </div>
     <script type="module" src="main.js"></script>

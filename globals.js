@@ -12,7 +12,7 @@ export const colors = [
     "purple", "fuchsia", "darkslateblue", "coral", "chartreuse", "aquamarine",
     "gold", "firebrick", "dodgerblue", "darkviolet", "forestgreen", "chocolate",
     "darkseagreen", "darkorchid", "cornflowerblue", "darkgreen", "darkgoldenrod",
-    "tomato", "mediumspringgreen", "orchid", "crimson"
+    "tomato", "orchid", "crimson"
 ];
 
 

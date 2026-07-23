@@ -8,29 +8,28 @@ export class Polygon extends RigidBody {
         super(position, color, mass, bounciness, friction);
         this.type = "polygon";
         this.vertices = vertices;
-        // bounding radius, set to furthest vertex
-        this.radius = Math.max(...vertices.map(v => v.magnitude()));
+        // "radius" is set to the size
+        const sideLength = this.vertices[0].clone().sub(this.vertices[1]).magnitude() / 2;
+        this.radius = sideLength;
     }
 
 
 
-    checkBounds(canvas, dt) {
-        if (this.position.y + this.vertices[3].y > canvas.height || this.position.y + this.vertices[0].y < 0) {
-            this.velocity.y = 0;
+    getBounds() {
+        const worldVerts = this.getWorldVertices();
+        let minX = Infinity; 
+        let minY = Infinity;
+        let maxX = -Infinity; 
+        let maxY = -Infinity;
 
-        }
-        // snap position
-        if (this.position.y + this.vertices[3].y > canvas.height) { // ground
-            this.position.y = canvas.height - this.vertices[3].y;
-        } else if (this.position.y + this.vertices[0].y < 0) { // ceiling
-            this.position.y = -this.vertices[0].y;
-        }
+        for (const v of worldVerts) {
+            if (v.x > maxX) maxX = v.x;
+            if (v.x < minX) minX = v.x;
 
-        if (this.position.x + this.vertices[0].x < 0) { // left wall
-            this.position.x = -this.vertices[0].x;
-        } else if (this.position.x + this.vertices[1].x > canvas.width) { // right wall
-            this.position.x = canvas.width - this.vertices[1].x;
+            if (v.y > maxY) maxY = v.y;
+            if (v.y < minY) minY = v.y;
         }
+        return {minX, maxX, minY, maxY}; // as an object, not an array
     }
 
     draw(ctx) {
@@ -48,22 +47,19 @@ export class Polygon extends RigidBody {
 
     // convert local vertex position to world position
     getWorldVertices() {
-        return [
-            this.position.clone().add(this.vertices[0]), this.position.clone().add(this.vertices[1]),
-            this.position.clone().add(this.vertices[2]), this.position.clone().add(this.vertices[3])
-        ];
+        return this.vertices.map(v => this.position.clone().add(v));
     }
 
     // ADD FOR POLYGONS AT SOME TIME
     handleDrag(airDensity) {
-        // const speed = this.velocity.magnitude();
+        const speed = this.velocity.magnitude();
 
-        // if (speed > 0) {
-        //     const dragForce = this.velocity.clone().mult(
-        //         0.5 * airDensity * circleDragCoefficient * Math.PI * (this.radius ** 2) * speed * dragK
-        //     );
-        //     this.force.add(dragForce);
-        // }
+        if (speed > 0)  {
+            const dragForce = this.velocity.clone().mult(
+                0.5 * airDensity * 1.05 * ((this.radius * 2) ** 2) * speed * dragK // radius is width, 1.05 is a temporary drag coefficient
+            );
+            this.force.add(dragForce);
+        }
     }
 
 

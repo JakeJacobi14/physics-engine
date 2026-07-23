@@ -6,7 +6,7 @@ import {
     radiusSlider, radiusValueDisplay, bouncinessValueDisplay, bouncinessSlider, airResistanceSlider, airResistanceValueDisplay,
     massSlider, massValueDisplay, frictionSlider, frictionValueDisplay, timeScaleSlider, timeScaleDisplay, resetTimeScaleButton,
     fpsDisplay, objectsDisplay, resetButton, spawnModeButton, pushModeButton, inspectModeButton, infoRadiusDisplay, infoMassDisplay,
-    infoBouncinessDisplay, infoFrictionDisplay, infoBox, colorInfoDisplay, diagonalLine
+    infoBouncinessDisplay, infoFrictionDisplay, infoBox, colorInfoDisplay, objectTypeDisplay, diagonalLine, circleButton, squareButton
 } from "./ui.js";
 
 const canvas = document.getElementById("canvas");
@@ -16,6 +16,7 @@ canvas.width = canvas.clientWidth;
 canvas.height = canvas.clientHeight;
 
 let mode = 1; // 1 for spawn, 2 for push
+let spawnMode = 1; // 1 for circle, 2 for square
 
 let lastTime = performance.now();
 
@@ -315,7 +316,7 @@ function polygonPolygon(b1, b2) {
         const overlap = getOverlap(proj1, proj2); // find if the two edges overlap
 
         // no overlap found
-        if (overlap <= 0) return;
+        if (overlap < 0) return;
         // update the smallest overlap (we want to correct only as minimally as possible)
         if (overlap < smallestOverlap) {
             smallestOverlap = overlap;
@@ -591,6 +592,10 @@ function resetScene() {
     pushModeButton.classList.remove("active");
     inspectModeButton.classList.remove("active");
 
+    spawnMode = 1; // reset to circle spawning
+    squareButton.classList.remove("active");
+    circleButton.classList.add("active");
+
     objectsDisplay.textContent = objects.length;
 
     infoRadiusDisplay.textContent = "25";
@@ -661,21 +666,31 @@ function playSliderTick() {
     osc.stop(audioCtx.currentTime + 0.015);
 }
 
-function benchmark(count, frames) {
+function benchmark(count, frames, spawnSquares) {
     resetScene();
     for (let i = 0; i < count; i++) {
         const x = randomRange(0, canvas.width);
         const y = randomRange(0, canvas.height);
         const posVector = new Vector2(x, y);
+        if (spawnSquares && Math.floor(randomRange(0, 8)) === 1) { // one in 8 chance to spawn a square 
+            const size = Math.round(randomRange(8, 40));
+            const vertices = makeSquareVertices(size * 2);
+            
+            const color = colors[Math.floor(randomRange(0, colors.length))];
+            const mass = Math.round(randomRange(1, 100));
+            const bounciness = Math.round(randomRange(0, 0.99));
+            const friction = Math.round(randomRange(0, 10));
 
-        const radius = Math.round(randomRange(8, 40));
-        const color = colors[Math.floor(randomRange(0, colors.length))];
-        const mass = Math.round(randomRange(1, 100));
-        const bounciness = Math.round(randomRange(0, 0.99));
-        const friction = Math.round(randomRange(0, 10));
-
-        spawnBall(posVector, radius, color, mass, bounciness, friction);
-
+            spawnPolygon(posVector, vertices, color, mass, bounciness, friction);
+        } else {
+            const radius = Math.round(randomRange(8, 40));
+            const color = colors[Math.floor(randomRange(0, colors.length))];
+            const mass = Math.round(randomRange(1, 100));
+            const bounciness = Math.round(randomRange(0, 0.99));
+            const friction = Math.round(randomRange(0, 10));
+        
+            spawnBall(posVector, radius, color, mass, bounciness, friction);
+        }
     }
 
     const times = [];
@@ -693,13 +708,13 @@ function benchmark(count, frames) {
 }
 
 function updateInfoPanel(object) {
-
     if (object !== currentInfoObject) {
         currentInfoObject = object;
         if (object === null) {
             infoBox.style.display = "none";
             return;
         }
+        objectTypeDisplay.textContent = object.type === "circle" ? "CIRCLE " : "SQUARE ";
         infoRadiusDisplay.textContent = object.radius;
         infoMassDisplay.textContent = object.mass;
         infoBouncinessDisplay.textContent = object.bounciness;
@@ -754,15 +769,20 @@ canvas.addEventListener("click", (event) => {
         const nudge = randomRange(0.01, 0.02);
         const posVector = new Vector2(x + nudge, y + nudge);
 
-        const radius = parseFloat(radiusSlider.value);
-
         const color = colors[Math.floor(randomRange(0, colors.length))]
         const mass = parseFloat(massSlider.value);
         const bounciness = parseFloat(bouncinessSlider.value);
         const friction = parseFloat(frictionSlider.value);
 
-        // position vector, radius, color, mass, bounciness
-        spawnBall(posVector, radius, color, mass, bounciness, friction);
+        const radius = parseFloat(radiusSlider.value); // radius acts as size for squares
+
+        if (spawnMode === 1) {
+            spawnBall(posVector, radius, color, mass, bounciness, friction);
+        } else if (spawnMode === 2) {
+            const vertices = makeSquareVertices(radius * 2);
+            spawnPolygon(posVector, vertices, color, mass, bounciness, friction);
+        }
+        
     }
 });
 
@@ -848,29 +868,20 @@ document.addEventListener("keydown", (event) => {
             spawnBall(posVector, radius, color, mass, bounciness, friction);
 
         }
-
     }
     // random balls for testing
     if (event.key === "y") {
         // plop sound when a ball is spawned
         playSpawnSound();
 
-        benchmark(300, 100);
+        benchmark(300, 100, false);
     }
-    // spawn a test polygon
-    if (event.key === "e") {
+    // benchmark with balls and polygons
+    if (event.key === "u") {
         // plop sound when a ball is spawned
         playSpawnSound();
-        const posVector = new Vector2(mouseX, mouseY);
-        // temporary -- size derivated from radius parameter
-        const size = parseFloat(radiusSlider.value);
-        const vertices = makeSquareVertices(size * 2);
-        const color = colors[Math.floor(randomRange(0, colors.length))]
-        const mass = parseFloat(massSlider.value);
-        const bounciness = parseFloat(bouncinessSlider.value);
-        const friction = parseFloat(frictionSlider.value);
 
-        spawnPolygon(posVector, vertices, color, mass, bounciness, friction);
+        benchmark(300, 100, true);
     }
 
 });
@@ -947,6 +958,22 @@ inspectModeButton.addEventListener("click", () => {
 
 });
 
+circleButton.addEventListener("click", () => {
+    spawnMode = 1;
+    squareButton.classList.remove("active");
+    circleButton.classList.add("active");
+    playClickSound();
+
+});
+squareButton.addEventListener("click", () => {
+    spawnMode = 2;
+    circleButton.classList.remove("active");
+    squareButton.classList.add("active");
+    playClickSound();
+
+});
+
+
 // listener to resize canvas
 window.addEventListener("resize", resizeCanvas)
 
@@ -957,7 +984,9 @@ loop();
 
 
 /* TODO:
- add AABB eliminations before SAT, cache axes for polygon-polygon, add ROTATION, SQUARE BOUNCINESS and FRICTION
- add ball-to-ball friction, more sound effects
- OPTIMIZATIONS (drawImg ball coloring optimization, finish sleeping bodies)
+ add ROTATION
+ polygon accurate friction and air resistance
+ add random polygon creation
+ add object-to-object friction
+ OPTIMIZATIONS (add AABB eliminations before SAT, cache axes for polygon-polygon, drawImg ball coloring optimization, finish sleeping bodies)
  */

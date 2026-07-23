@@ -1,5 +1,5 @@
 import { Vector2 } from "./vector2.js";
-import { gravity, circleDragCoefficient, dragK, gK } from "./globals.js";
+import { gravity, circleDragCoefficient, dragK, gK, REST_THRESHOLD } from "./globals.js";
 
 export class RigidBody {
     isAsleep = false;
@@ -36,6 +36,61 @@ export class RigidBody {
         
         // convert velocity into position
         this.position.add(this.velocity.clone().mult(dt));
+    }
+
+    checkBounds(canvas, dt) {
+        const bounds = this.getBounds();
+
+        const bottomOffset = bounds.maxY - this.position.y;
+        const topOffset = bounds.minY - this.position.y;
+        const leftOffset = bounds.minX - this.position.x;
+        const rightOffset = bounds.maxX - this.position.x;
+
+        // floor and ceiling
+        if (this.position.y + bottomOffset > canvas.height || this.position.y + topOffset < 0) {
+            const ySpeed = Math.abs(this.velocity.y);
+            if (ySpeed > REST_THRESHOLD) {
+                this.bounce(new Vector2(0, 1)); // direction doesn't matter
+            } else {
+                this.velocity.y = 0;
+            }
+
+            if (this.position.y + bottomOffset > canvas.height) {
+                this.position.y = canvas.height - bottomOffset;
+            } else if (this.position.y + topOffset < 0) {
+                this.position.y = -topOffset;
+            }
+        }
+
+        // object to ground friction
+        const isOnGround = this.position.y + bottomOffset >= canvas.height - 0.5;
+        const ySpeed = Math.abs(this.velocity.y);
+        if (isOnGround && ySpeed < REST_THRESHOLD) { // if object is touching the ground and not moving up
+            const xSpeed = Math.abs(this.velocity.x);
+            const drop = this.friction * dt * (this.type === "polygon" ? 6 : 1); // temporary friction increase for polygons (until coloumb friction can be added)
+            if (xSpeed > drop) {
+                this.velocity.x -= Math.sign(this.velocity.x) * drop;
+            } else {
+                this.velocity.x = 0;
+            }
+        }
+            
+
+        // walls
+        if (this.position.x + rightOffset > canvas.width || this.position.x + leftOffset < 0) {
+            const xSpeed = Math.abs(this.velocity.x);
+            if (xSpeed > REST_THRESHOLD) {
+                this.bounce(new Vector2(1, 0)); // direction doesn't matter
+            } else {
+                this.velocity.x = 0;
+            }
+            
+            if (this.position.x + rightOffset > canvas.width) {
+                this.position.x = canvas.width - rightOffset;
+            } else if (this.position.x + leftOffset < 0) {
+                this.position.x = -leftOffset;
+            }
+        }
     }
 
     bounce(dir) {

@@ -37,57 +37,14 @@ export class Ball extends RigidBody {
     }
 
 
-
-    // check for clipping out of the screen
-    checkBounds(canvas, dt) {
-        const ySpeed = Math.abs(this.velocity.y);
-        // check for ground + ceiling and bounce
-        if (this.position.y > canvas.height - this.radius || this.position.y < this.radius) {
-            // insignificant bounces zero out speed
-            if (ySpeed > REST_THRESHOLD) {
-                this.bounce(new Vector2(0, this.radius));
-            } else {
-                this.velocity.y = 0;
-            }
-            // snap to the bottom if the ball falls through the ground
-            if (this.position.y > canvas.height - this.radius) { // ground
-                this.position.y = canvas.height - this.radius;
-            } else if (this.position.y < this.radius) { // ceiling
-                this.position.y = this.radius;
-            }
-
-        }
-
-        // ball-to-ground friction
-        const isOnGround = this.position.y >= canvas.height - this.radius - 0.5;
-        if (isOnGround && Math.abs(this.velocity.y) < REST_THRESHOLD) {
-            const slow = this.friction;
-            const drop = slow * dt;
-            if (Math.abs(this.velocity.x) > drop) {
-                this.velocity.x -= Math.sign(this.velocity.x) * drop;
-            } else {
-                this.velocity.x = 0;
-            }
-        }
-
-        const xSpeed = Math.abs(this.velocity.x);
-        // check for walls and bounce
-        if (this.position.x > canvas.width - this.radius || this.position.x < this.radius) {
-            // insignificant bounces zero out speed
-            if (xSpeed > REST_THRESHOLD) {
-                this.bounce(new Vector2(this.radius, 0));
-            } else {
-                this.velocity.x = 0;
-            }
-            // snap to the side if the ball goes through the wall
-            if (this.position.x > canvas.width - this.radius) { // right wall
-                this.position.x = canvas.width - this.radius;
-            }
-            else if (this.position.x < this.radius) { // left wall
-                this.position.x = this.radius;
-            }
-
-        }
+    // Return the bounding coordinates of the ball
+    getBounds() {
+        return {
+            minX: this.position.x - this.radius,
+            maxX: this.position.x + this.radius,
+            minY: this.position.y - this.radius,
+            maxY: this.position.y + this.radius,
+        }; // as an object, not an array
     }
 
     // sleeping bodies

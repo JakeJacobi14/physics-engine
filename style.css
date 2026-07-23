@@ -7,6 +7,7 @@
     --bg-panel: rgba(18, 29, 51, 0.6);
     --grid-line: rgba(88, 130, 203, 0.15);
     --grid-line-strong: rgba(88, 130, 203, 0.35);
+    --ink-dark: rgb(38, 38, 38);
     --ink-dim: #7c93b3;
 }
 /* make the page not highlightable */
@@ -202,7 +203,9 @@ canvas {
     right: 10px;
     color: var(--ink);
     font-size: 14px;
-
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
 /* style for the settings sliders and labels */
@@ -225,13 +228,21 @@ canvas {
 /* highlight the active mode button */
 #controls button.active {
     background-color: var(--accent);
-    color: rgb(36, 36, 36);
+    color: var(--ink-dark);
+    font-weight: bold;
+}
+
+#spawn-modes button.active {
+    background-color: var(--accent);
+    color: var(--ink-dark);
     font-weight: bold;
 }
 
 #spawnMode,
 #pushMode,
-#inspectMode {
+#inspectMode,
+#circleButton,
+#squareButton {
     font-size: 11px;
     font-weight: 700;
     color: var(--ink-dim);
@@ -240,6 +251,22 @@ canvas {
     padding: 8px 14px;
     cursor: pointer;
 }
+
+#button-overlay #circleButton {
+    border-right: none;
+}
+#button-overlay #squareButton {
+    border-left: none;
+}
+
+/* #spawnMode:hover,
+#inspectMode:hover,
+#pushMode:hover,
+#circleButton:hover,
+#squareButton:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+} */
 
 /* remove the double line between the 3 buttons */
 /* middle button has no side borders */
@@ -252,7 +279,10 @@ canvas {
 .mode-buttons {
     display: flex;
     gap: 0px;
+    
 }
+
+
 
 input[type="range"] {
     -webkit-appearance: none;
@@ -361,3 +391,4 @@ input[type="range"]::-moz-range-thumb {
     color: var(--accent2);
     font-weight: 500;
 }
+

@@ -34,3 +34,7 @@ export const infoMassDisplay = document.getElementById("infoMassDisplay");
 export const infoBouncinessDisplay = document.getElementById("infoBouncinessDisplay");
 export const infoFrictionDisplay = document.getElementById("infoFrictionDisplay");
 export const colorInfoDisplay = document.getElementById("colorInfoDisplay");
+export const objectTypeDisplay = document.getElementById("objectTypeDisplay");
+
+export const circleButton = document.getElementById("circleButton");
+export const squareButton = document.getElementById("squareButton");
